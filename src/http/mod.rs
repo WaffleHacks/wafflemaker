@@ -1,8 +1,11 @@
 use tracing::info;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
+mod errors;
 mod handlers;
 mod webhooks;
+
+pub use errors::recover;
 
 /// Build the routes for the API
 pub fn routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
