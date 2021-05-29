@@ -42,3 +42,31 @@ pub fn github(raw_body: &[u8], raw_signature: String, secret: &[u8]) -> Result<(
     // Verify the signature
     hmac::verify(&key, raw_body, &signature).map_err(|e| e.to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{docker, github};
+    use ring::hmac;
+    use std::fs;
+
+    #[test]
+    fn validate_docker_authentication() {
+        let token = "the-amazing:test-token";
+        let header = format!("Basic {}", base64::encode(token));
+
+        assert!(docker(header, token.to_string()).is_ok());
+    }
+
+    #[test]
+    fn validate_github_signature() {
+        let secret = "the-amazing-test-secret".as_bytes();
+        let body = fs::read("testdata/webhooks/github-ping.json")
+            .expect("failed to read github-ping.json test data");
+
+        let key = hmac::Key::new(hmac::HMAC_SHA256, secret);
+        let signature_bytes = hmac::sign(&key, &body);
+        let signature = format!("sha256={}", hex::encode(signature_bytes.as_ref()));
+
+        assert!(github(&body, signature, secret).is_ok());
+    }
+}

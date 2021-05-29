@@ -33,3 +33,47 @@ pub struct Repository {
     pub name: String,
     pub clone_url: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Github;
+    use std::fs;
+
+    #[test]
+    fn parse_github_ping() {
+        let content = fs::read_to_string("testdata/webhooks/github-ping.json")
+            .expect("failed to read github-ping.json test data");
+
+        let parsed: Github = serde_json::from_str(&content).expect("invalid JSON format");
+
+        assert_eq!("ping", parsed.name());
+        if let Github::Ping { zen, hook_id } = parsed {
+            assert_eq!("Non-blocking is better than blocking.", &zen);
+            assert_eq!(30, hook_id);
+        }
+    }
+
+    #[test]
+    fn parse_github_push() {
+        let content = fs::read_to_string("testdata/webhooks/github-push.json")
+            .expect("failed to read github-push.json test data");
+
+        let parsed: Github = serde_json::from_str(&content).expect("invalid JSON format");
+
+        assert_eq!("push", parsed.name());
+        if let Github::Push {
+            after,
+            reference,
+            repository,
+        } = parsed
+        {
+            assert_eq!("0000000000000000000000000000000000000000", &after);
+            assert_eq!("refs/tags/simple-tag", &reference);
+            assert_eq!("Codertocat/Hello-World", &repository.name);
+            assert_eq!(
+                "https://octocoders.github.io/Codertocat/Hello-World.git",
+                &repository.clone_url
+            );
+        }
+    }
+}
