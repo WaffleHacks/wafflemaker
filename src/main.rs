@@ -42,7 +42,9 @@ async fn main() -> Result<()> {
         .init();
 
     // Setup the routes and launch the server
-    let routes = http::routes().recover(http::recover).with(trace_request());
+    let routes = http::routes(configuration)
+        .recover(http::recover)
+        .with(trace_request());
     warp::serve(routes).run(address).await;
 
     Ok(())
