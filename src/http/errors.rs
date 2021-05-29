@@ -1,8 +1,7 @@
 use serde::Serialize;
 use std::convert::Infallible;
-use warp::http::StatusCode;
 use warp::{
-    body::BodyDeserializeError,
+    http::StatusCode,
     reject::{MethodNotAllowed, MissingHeader, PayloadTooLarge, Reject},
     reply, Rejection, Reply,
 };
@@ -23,6 +22,10 @@ impl Reject for AuthorizationError {}
 #[derive(Debug)]
 pub struct UndeployableError;
 impl Reject for UndeployableError {}
+
+#[derive(Debug)]
+pub struct BodyDeserializeError;
+impl Reject for BodyDeserializeError {}
 
 /// Convert a `Rejection` to an API error, otherwise simply passes
 /// the rejection along.
