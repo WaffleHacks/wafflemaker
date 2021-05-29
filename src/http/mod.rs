@@ -1,3 +1,4 @@
+use tracing::info;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 mod handlers;
@@ -26,7 +27,10 @@ pub fn routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone 
     // Health check route
     let health = warp::path("health")
         .and(warp::get())
-        .map(|| StatusCode::NO_CONTENT)
+        .map(|| {
+            info!("alive and healthy!");
+            StatusCode::NO_CONTENT
+        })
         .with(warp::trace::named("health"));
 
     docker.or(github).or(health)
