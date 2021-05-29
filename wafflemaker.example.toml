@@ -1,0 +1,61 @@
+# The base server configuration
+[server]
+# The port and address where server should listen to receive webhooks
+address = "127.0.0.1:8000"
+
+# The logging specification in the RUST_LOG format, can be overridden
+# by the RUST_LOG environment variable
+# Default: "info"
+log = "info"
+
+# The number of deployment processors to run
+workers = 2
+
+
+# The Docker configuration
+[docker]
+# The webhook authentication token for basic auth
+# Must be in the format:
+#   <something>:<something>
+token = "please-change:this-token"
+
+# The docker endpoint configuration
+[docker.connection]
+# How to connect to docker
+# Options:
+#   - local     connect via unix socket or local pipe
+#   - http      connect using unsecured HTTP
+#   - ssl       connect using HTTPS
+type = "local"
+
+# The endpoint to connect to
+# Expects a path for `local`, and a URL for `http` or `ssl`
+endpoint = "unix:///var/run/docker.sock"
+
+# How long to wait in seconds for a request to complete
+timeout = 120
+
+# SSL only
+# The certificate authority to use
+#ca = "./ca.pem"
+
+# SSL only
+# The certificate to use
+#certificate = "./cert.pem"
+
+# SSL only
+# The certificate key to use
+#key = "./key.pem"
+
+
+# The GitHub configuration
+[github]
+# Where to clone the configuration repository to
+# The directory will be created if it does not exist
+clone_to = "./configuration"
+
+# The repository to pull configuration from
+repository = "WaffleHacks/waffles"
+
+# The webhook signature secret
+secret = "please-change-this-secret"

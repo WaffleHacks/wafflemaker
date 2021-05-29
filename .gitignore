@@ -109,3 +109,7 @@ modules.xml
 # Ignore all local history of files
 .history
 .ionide
+
+### Project files ###
+configuration/
+wafflemaker.toml
