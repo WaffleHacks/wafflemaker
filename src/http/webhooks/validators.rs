@@ -3,7 +3,7 @@ use ring::hmac;
 use warp::{reject, Rejection};
 
 /// Ensure that the authorization header is correct
-pub fn docker(raw_header: String, token: String) -> Result<(), Rejection> {
+pub fn docker(raw_header: String, token: &str) -> Result<(), Rejection> {
     // Extract the base 64 portion
     let b64 = raw_header
         .strip_prefix("Basic ")

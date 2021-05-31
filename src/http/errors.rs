@@ -1,5 +1,7 @@
+use git2::Error as Git2Error;
 use serde::Serialize;
 use std::convert::Infallible;
+use tracing::error;
 use warp::{
     http::StatusCode,
     reject::{MethodNotAllowed, MissingHeader, PayloadTooLarge, Reject},
@@ -23,9 +25,15 @@ impl Reject for AuthorizationError {}
 pub struct UndeployableError;
 impl Reject for UndeployableError {}
 
+/// Raised when the request body cannot be deserialized
 #[derive(Debug)]
 pub struct BodyDeserializeError;
 impl Reject for BodyDeserializeError {}
+
+/// Raised when there is an error interacting the the git repo
+#[derive(Debug)]
+pub struct GitError(pub Git2Error);
+impl Reject for GitError {}
 
 /// Convert a `Rejection` to an API error, otherwise simply passes
 /// the rejection along.
@@ -53,6 +61,15 @@ pub async fn recover(error: Rejection) -> Result<impl Reply, Infallible> {
     } else if error.find::<UndeployableError>().is_some() {
         code = StatusCode::FORBIDDEN;
         message = "forbidden";
+    } else if let Some(e) = error.find::<GitError>() {
+        error!(
+            "error while interacting with local repo: ({:?}, {:?}) {}",
+            e.0.class(),
+            e.0.code(),
+            e.0.message()
+        );
+        code = StatusCode::INTERNAL_SERVER_ERROR;
+        message = "internal server error";
     } else {
         code = StatusCode::INTERNAL_SERVER_ERROR;
         message = "internal server error";
