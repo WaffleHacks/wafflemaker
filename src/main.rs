@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use structopt::StructOpt;
-use tokio::fs;
-use tracing::Span;
+use tokio::{fs, signal, sync::oneshot, task};
+use tracing::{info, Span};
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{
     trace::{trace, Info, Trace},
@@ -14,6 +14,7 @@ mod git;
 mod http;
 
 use args::Args;
+use git::Repository;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -43,19 +44,36 @@ async fn main() -> Result<()> {
         .init();
 
     // Connect to the repository service
-    let repository = git::Repository::connect(&configuration.github.clone_to);
+    let repository = Repository::connect(&configuration.github.clone_to);
 
-    // Setup the routes and launch the server
+    // Setup the routes
     let routes = http::routes(configuration)
         .recover(http::recover)
         .with(trace_request());
-    warp::serve(routes).run(address).await;
 
-    // TODO: listen for ctrl+c
+    // Bind the server
+    let (stop_tx, stop_rx) = oneshot::channel();
+    let (addr, server) = warp::serve(routes).bind_with_graceful_shutdown(address, async {
+        stop_rx.await.ok();
+    });
+
+    // Start the server
+    task::spawn(server);
+    info!("listening on {}", addr);
+
+    // Wait for shutdown
+    signal::ctrl_c()
+        .await
+        .context("failed to listen for event")?;
+    info!("signal received, shutting down...");
+
+    // Shutdown the server
+    stop_tx.send(()).unwrap();
 
     // Shutdown the repository service
     repository.shutdown();
 
+    info!("successfully shutdown, good bye!");
     Ok(())
 }
 

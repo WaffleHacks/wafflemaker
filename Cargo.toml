@@ -25,7 +25,7 @@ uuid = { version = "0.8", features = ["v4"] }
 
 # Utilities
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.6", features = ["fs", "macros", "process", "rt", "rt-multi-thread"] }
+tokio = { version = "1.6", features = ["fs", "macros", "process", "rt", "rt-multi-thread", "signal"] }
 
 # Webhooks
 base64 = "0.13"
