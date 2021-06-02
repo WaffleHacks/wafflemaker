@@ -53,9 +53,11 @@ async fn main() -> Result<()> {
 
     // Bind the server
     let (stop_tx, stop_rx) = oneshot::channel();
-    let (addr, server) = warp::serve(routes).bind_with_graceful_shutdown(address, async {
-        stop_rx.await.ok();
-    });
+    let (addr, server) = warp::serve(routes)
+        .try_bind_with_graceful_shutdown(address, async {
+            stop_rx.await.ok();
+        })
+        .with_context(|| format!("failed to bind to {}", address))?;
 
     // Start the server
     task::spawn(server);
