@@ -12,6 +12,9 @@ edition = "2018"
 structopt = "0.3"
 toml = "0.5"
 
+# Deployment
+git2 = "0.13"
+
 # Error handling
 anyhow = "1.0"
 

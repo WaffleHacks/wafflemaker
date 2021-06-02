@@ -10,6 +10,7 @@ use warp::{
 
 mod args;
 mod config;
+mod git;
 mod http;
 
 use args::Args;
@@ -41,11 +42,19 @@ async fn main() -> Result<()> {
         .with_span_events(FmtSpan::CLOSE)
         .init();
 
+    // Connect to the repository service
+    let repository = git::Repository::connect(&configuration.github.clone_to);
+
     // Setup the routes and launch the server
     let routes = http::routes(configuration)
         .recover(http::recover)
         .with(trace_request());
     warp::serve(routes).run(address).await;
+
+    // TODO: listen for ctrl+c
+
+    // Shutdown the repository service
+    repository.shutdown();
 
     Ok(())
 }
