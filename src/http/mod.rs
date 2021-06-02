@@ -1,4 +1,4 @@
-use super::config::Config;
+use super::{config::Config, git::Repository};
 use std::sync::Arc;
 use tracing::info;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
@@ -20,8 +20,18 @@ fn with_config(
     warp::any().map(move || config.clone())
 }
 
+/// Allow the repository to be cloned between handlers
+fn with_repository(
+    repo: Repository,
+) -> impl Filter<Extract = (Repository,), Error = Infallible> + Clone {
+    warp::any().map(move || repo.clone())
+}
+
 /// Build the routes for the API
-pub fn routes(config: Config) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn routes(
+    config: Config,
+    repo: Repository,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     let shared_config = Arc::new(config);
 
     // Docker webhook route
@@ -41,6 +51,7 @@ pub fn routes(config: Config) -> impl Filter<Extract = impl Reply, Error = Rejec
         .and(warp::body::bytes())
         .and(warp::header::<String>("X-Hub-Signature-256"))
         .and(with_config(shared_config))
+        .and(with_repository(repo))
         .and_then(handlers::github)
         .with(warp::trace::named("docker"));
 

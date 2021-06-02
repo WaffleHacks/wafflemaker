@@ -3,6 +3,7 @@ use super::{
     webhooks::{validators, Docker, Github},
     SharedConfig,
 };
+use crate::git::Repository;
 use bytes::Bytes;
 use tracing::info;
 use warp::{http::StatusCode, reject, Rejection, Reply};
@@ -27,6 +28,7 @@ pub async fn github(
     raw_body: Bytes,
     raw_signature: String,
     config: SharedConfig,
+    repo: Repository,
 ) -> Result<impl Reply, Rejection> {
     validators::github(&raw_body, raw_signature, config.github.secret.as_bytes())?;
 
@@ -50,6 +52,11 @@ pub async fn github(
     if &repository.name != &config.github.repository {
         return Err(reject::custom(UndeployableError));
     }
+
+    // Pull the repository
+    repo.pull(repository.clone_url, reference)
+        .await
+        .map_err(|e| reject::custom(GitError(e)))?;
 
     // TODO: spawn deployment job to diff repository and update necessary containers
 

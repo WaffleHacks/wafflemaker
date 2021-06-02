@@ -44,10 +44,10 @@ async fn main() -> Result<()> {
         .init();
 
     // Connect to the repository service
-    let repository = Repository::connect(&configuration.github.clone_to);
+    let (repository, repository_handle) = Repository::connect(&configuration.github.clone_to);
 
     // Setup the routes
-    let routes = http::routes(configuration)
+    let routes = http::routes(configuration, repository.clone())
         .recover(http::recover)
         .with(trace_request());
 
@@ -74,6 +74,7 @@ async fn main() -> Result<()> {
 
     // Shutdown the repository service
     repository.shutdown();
+    repository_handle.join().unwrap();
 
     info!("successfully shutdown, good bye!");
     Ok(())

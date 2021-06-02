@@ -17,13 +17,13 @@ use tracing::{info, info_span};
 pub fn spawn<P: AsRef<Path>>(
     path: P,
 ) -> (
-    mpsc::Sender<(Method, oneshot::Sender<Return>)>,
+    mpsc::SyncSender<(Method, oneshot::Sender<Return>)>,
     JoinHandle<()>,
 ) {
     let path = path.as_ref().to_path_buf();
 
     // Create the method calling channels
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::sync_channel(5);
 
     // Handle the calls
     let handle = thread::spawn(move || {
