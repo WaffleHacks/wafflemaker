@@ -1,7 +1,7 @@
 use super::Result;
 use git2::{Delta, DiffDelta, DiffOptions, Object, ObjectType, Repository};
 use std::path::{Path, PathBuf};
-use tracing::{debug, info, info_span};
+use tracing::{debug, info, instrument};
 
 /// The diff action that happened to the file
 #[derive(Debug)]
@@ -46,14 +46,12 @@ impl From<DiffDelta<'_>> for DiffFile {
 }
 
 /// Calculate the diff between two commits
+#[instrument(name = "diff", skip(repo))]
 pub(crate) fn run(repo: &Repository, before: &str, after: &str) -> Result<Vec<DiffFile>> {
-    let span = info_span!("diff", before = before, after = after);
-    let _ = span.enter();
-
     // Convert the commit references to objects
     let before = to_object(repo, before)?;
     let after = to_object(repo, after)?;
-    debug!(parent: &span, "converted references to tree objects");
+    debug!("converted references to tree objects");
 
     // Compute the diff
     let mut options = DiffOptions::new();
@@ -61,9 +59,9 @@ pub(crate) fn run(repo: &Repository, before: &str, after: &str) -> Result<Vec<Di
         .ignore_whitespace(true)
         .ignore_whitespace_change(true);
     let diff = repo.diff_tree_to_tree(before.as_tree(), after.as_tree(), Some(&mut options))?;
-    info!(parent: &span, "computed diff between trees");
+    info!("computed diff between trees");
 
-    debug!(parent: &span, "converting to custom representation");
+    debug!("converting to custom representation");
     Ok(diff.deltas().map(DiffFile::from).collect())
 }
 

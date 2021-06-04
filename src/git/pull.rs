@@ -3,24 +3,21 @@ use git2::{
     build::CheckoutBuilder, AnnotatedCommit, AutotagOption, FetchOptions, Reference, Remote,
     RemoteCallbacks, Repository,
 };
-use tracing::{debug, error, info, info_span};
+use tracing::{debug, error, info, instrument};
 
 /// Pull a reference from the given remote URL
+#[instrument(name = "pull", skip(repo))]
 pub(crate) fn run(repo: &Repository, clone_url: &str, refspec: &str) -> Result<()> {
-    let span = info_span!("pull", clone_url = clone_url, refspec = refspec);
-    let _ = span.enter();
-
     // Get the remote
     repo.remote_set_url("origin", clone_url)?;
     let remote = repo.find_remote("origin").unwrap();
 
     // Pull from the remote
-    info!(parent: &span, "pulling from {}", refspec);
+    info!("pulling from {}", refspec);
     let fetch_commit = fetch(repo, refspec, remote)?;
 
     // Merge into the local head
     info!(
-        parent: &span,
         "merging into {}",
         fetch_commit.refname().unwrap_or(&refspec)
     );
@@ -30,27 +27,23 @@ pub(crate) fn run(repo: &Repository, clone_url: &str, refspec: &str) -> Result<(
 }
 
 /// Fetch all the data in the given refspec
+#[instrument(name = "fetch", skip(repo, remote))]
 fn fetch<'r>(
     repo: &'r Repository,
     refspec: &str,
     mut remote: Remote,
 ) -> Result<AnnotatedCommit<'r>> {
-    let span = info_span!("fetch", refspec = refspec);
-    let _ = span.enter();
-
     // Log transfer progress
     let mut callback = RemoteCallbacks::new();
     callback.transfer_progress(|stats| {
         if stats.received_objects() == stats.total_objects() {
             debug!(
-                parent: &span,
                 "resolving deltas {}/{}",
                 stats.indexed_deltas(),
                 stats.total_deltas()
             );
         } else if stats.total_objects() > 0 {
             debug!(
-                parent: &span,
                 "received {}/{} objects ({}) in {} bytes",
                 stats.received_objects(),
                 stats.total_objects(),
@@ -77,7 +70,6 @@ fn fetch<'r>(
     let stats = remote.stats();
     if stats.local_objects() > 0 {
         info!(
-            parent: &span,
             "received {}/{} objects in {} bytes (used {} local objects",
             stats.indexed_objects(),
             stats.total_objects(),
@@ -86,7 +78,6 @@ fn fetch<'r>(
         );
     } else {
         info!(
-            parent: &span,
             "received {}/{} objects in {} bytes",
             stats.indexed_objects(),
             stats.total_objects(),
@@ -100,20 +91,18 @@ fn fetch<'r>(
 
 /// Merge the pulled branch and the current history
 /// Supports normal merge and fast-forwarding, but will not try to resolve conflicts.
+#[instrument(
+    name = "merge",
+    skip(repo, fetch_commit),
+    fields(commit = fetch_commit.refname().unwrap_or_default())
+)]
 fn merge(repo: &Repository, refname: &str, fetch_commit: AnnotatedCommit) -> Result<()> {
-    let span = info_span!(
-        "merge",
-        refname = refname,
-        commit = fetch_commit.refname().unwrap_or_default()
-    );
-    let _ = span.enter();
-
     // Run a merge analysis
     let analysis = repo.merge_analysis(&[&fetch_commit])?;
 
     // Do the appropriate merge (fast-forward/normal/none)
     if analysis.0.is_fast_forward() {
-        info!(parent: &span, "merging with fast-forward");
+        info!("merging with fast-forward");
 
         match repo.find_reference(&refname) {
             Ok(mut r) => fast_forward(repo, &mut r, &fetch_commit)?,
@@ -137,31 +126,32 @@ fn merge(repo: &Repository, refname: &str, fetch_commit: AnnotatedCommit) -> Res
             }
         }
     } else if analysis.0.is_normal() {
-        info!(parent: &span, "merging normally");
+        info!("merging normally");
 
         let head_reference = repo.head()?;
         let head = repo.reference_to_annotated_commit(&head_reference)?;
         normal_merge(repo, &head, &fetch_commit)?;
     } else {
-        info!(parent: &span, "no merge necessary");
+        info!("no merge necessary");
     }
 
     Ok(())
 }
 
 /// Perform a fast forward merge
+#[instrument(
+    name = "fast_forward",
+    skip(repo, local_branch, remote_commit),
+    fields(
+        local_branch = local_branch.name().unwrap_or_default(),
+        commit = remote_commit.refname().unwrap_or_default()
+    )
+)]
 fn fast_forward(
     repo: &Repository,
     local_branch: &mut Reference,
     remote_commit: &AnnotatedCommit,
 ) -> Result<()> {
-    let span = info_span!(
-        "fast_forward",
-        local_branch = local_branch.name().unwrap_or_default(),
-        commit = remote_commit.refname().unwrap_or_default()
-    );
-    let _ = span.enter();
-
     // Get the name of the branch
     let name = match local_branch.name() {
         Some(s) => s.to_string(),
@@ -183,7 +173,6 @@ fn fast_forward(
     repo.checkout_head(Some(CheckoutBuilder::default().force()))?;
 
     info!(
-        parent: &span,
         "successfully fast-forwarded {} to {}",
         name,
         remote_commit.id()
@@ -193,18 +182,19 @@ fn fast_forward(
 }
 
 /// Perform a normal merge
+#[instrument(
+    name = "normal_merge",
+    skip(repo, local, remote),
+    fields(
+        local = local.refname().unwrap_or_default(),
+        remote = remote.refname().unwrap_or_default()
+    )
+)]
 fn normal_merge(
     repo: &Repository,
     local: &AnnotatedCommit,
     remote: &AnnotatedCommit,
 ) -> Result<()> {
-    let span = info_span!(
-        "normal_merge",
-        local = local.refname().unwrap_or_default(),
-        remote = local.refname().unwrap_or_default()
-    );
-    let _ = span.enter();
-
     // Find the common ancestor between the two commits
     let local_tree = repo.find_commit(local.id())?.tree()?;
     let remote_tree = repo.find_commit(remote.id())?.tree()?;
@@ -217,10 +207,7 @@ fn normal_merge(
 
     // Don't attempt to resolve conflicts
     if index.has_conflicts() {
-        error!(
-            parent: &span,
-            "merge conflicts detected, cannot resolve automatically"
-        );
+        error!("merge conflicts detected, cannot resolve automatically");
         repo.checkout_index(Some(&mut index), None)?;
         return Ok(());
     }
@@ -239,12 +226,7 @@ fn normal_merge(
         &[&local_commit, &remote_commit],
     )?;
 
-    info!(
-        parent: &span,
-        "successfully merged from {} to {}",
-        remote.id(),
-        local.id()
-    );
+    info!("successfully merged from {} to {}", remote.id(), local.id());
 
     Ok(())
 }
