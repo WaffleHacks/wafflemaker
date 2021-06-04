@@ -1,5 +1,5 @@
-use super::{config::Config, git::Repository};
-use std::sync::Arc;
+use crate::{config::Config, git::Repository, jobs::SharedJobQueue};
+use std::{convert::Infallible, sync::Arc};
 use tracing::info;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
@@ -8,7 +8,6 @@ mod handlers;
 mod webhooks;
 
 pub use errors::recover;
-use std::convert::Infallible;
 
 type SharedConfig = Arc<Config>;
 
@@ -27,10 +26,18 @@ fn with_repository(
     warp::any().map(move || repo.clone())
 }
 
+/// Allow job queue to be cloned between handlers
+fn with_queue(
+    queue: SharedJobQueue,
+) -> impl Filter<Extract = (SharedJobQueue,), Error = Infallible> + Clone {
+    warp::any().map(move || queue.clone())
+}
+
 /// Build the routes for the API
 pub fn routes(
     config: Config,
     repo: Repository,
+    queue: SharedJobQueue,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     let shared_config = Arc::new(config);
 
@@ -41,6 +48,7 @@ pub fn routes(
         .and(warp::body::json())
         .and(warp::header::<String>("Authorization"))
         .and(with_config(shared_config.clone()))
+        .and(with_queue(queue.clone()))
         .and_then(handlers::docker)
         .with(warp::trace::named("docker"));
 
@@ -52,6 +60,7 @@ pub fn routes(
         .and(warp::header::<String>("X-Hub-Signature-256"))
         .and(with_config(shared_config))
         .and(with_repository(repo))
+        .and(with_queue(queue))
         .and_then(handlers::github)
         .with(warp::trace::named("docker"));
 

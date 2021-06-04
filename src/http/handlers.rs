@@ -3,7 +3,7 @@ use super::{
     webhooks::{validators, Docker, Github},
     SharedConfig,
 };
-use crate::git::Repository;
+use crate::{git::Repository, jobs::SharedJobQueue};
 use bytes::Bytes;
 use tracing::info;
 use warp::{http::StatusCode, reject, Rejection, Reply};
@@ -13,6 +13,7 @@ pub async fn docker(
     body: Docker,
     authorization: String,
     config: SharedConfig,
+    queue: SharedJobQueue,
 ) -> Result<impl Reply, Rejection> {
     validators::docker(authorization, &config.docker.token)?;
 
@@ -29,6 +30,7 @@ pub async fn github(
     raw_signature: String,
     config: SharedConfig,
     repo: Repository,
+    queue: SharedJobQueue,
 ) -> Result<impl Reply, Rejection> {
     validators::github(&raw_body, raw_signature, config.github.secret.as_bytes())?;
 

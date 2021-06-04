@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::{fs, signal, sync::oneshot, task};
 use tracing::{info, Span};
@@ -16,6 +17,7 @@ mod jobs;
 
 use args::Args;
 use git::Repository;
+use jobs::JobQueue;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -47,8 +49,11 @@ async fn main() -> Result<()> {
     // Connect to the repository service
     let (repository, repository_handle) = Repository::connect(&configuration.github.clone_to);
 
+    // TODO: start job processor
+    let job_queue = Arc::new(JobQueue::new());
+
     // Setup the routes
-    let routes = http::routes(configuration, repository.clone())
+    let routes = http::routes(configuration, repository.clone(), job_queue)
         .recover(http::recover)
         .with(trace_request());
 
