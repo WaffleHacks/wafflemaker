@@ -3,7 +3,10 @@ use super::{
     webhooks::{validators, Docker, Github},
     SharedConfig,
 };
-use crate::{git::Repository, jobs::SharedJobQueue};
+use crate::{
+    git::Repository,
+    jobs::{self, PlanUpdate, SharedJobQueue},
+};
 use bytes::Bytes;
 use tracing::info;
 use warp::{http::StatusCode, reject, Rejection, Reply};
@@ -38,16 +41,17 @@ pub async fn github(
         serde_json::from_slice(&raw_body).map_err(|_| reject::custom(BodyDeserializeError))?;
     info!("got new {} hook", body.name());
 
-    let (after, reference, repository) = match body {
+    let (before, after, reference, repository) = match body {
         Github::Ping { zen, hook_id } => {
             info!("received ping from hook {}: {}", hook_id, zen);
             return Ok(StatusCode::NO_CONTENT);
         }
         Github::Push {
             after,
+            before,
             reference,
             repository,
-        } => (after, reference, repository),
+        } => (before, after, reference, repository),
     };
 
     // Check if the repository is allowed to be pulled
@@ -60,7 +64,8 @@ pub async fn github(
         .await
         .map_err(|e| reject::custom(GitError(e)))?;
 
-    // TODO: spawn deployment job to diff repository and update necessary containers
+    // Start the update
+    jobs::dispatch(queue, PlanUpdate::new(before, after));
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -10,6 +10,7 @@ pub enum Github {
     },
     Push {
         after: String,
+        before: String,
         #[serde(rename = "ref")]
         reference: String,
         repository: Repository,
@@ -63,11 +64,13 @@ mod tests {
         assert_eq!("push", parsed.name());
         if let Github::Push {
             after,
+            before,
             reference,
             repository,
         } = parsed
         {
             assert_eq!("0000000000000000000000000000000000000000", &after);
+            assert_eq!("4544205a385319fd846d5df4ed2e3b8173529d78", &before);
             assert_eq!("refs/tags/simple-tag", &reference);
             assert_eq!("Codertocat/Hello-World", &repository.name);
             assert_eq!(
