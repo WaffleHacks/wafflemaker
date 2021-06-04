@@ -15,7 +15,7 @@ pub async fn worker(id: u32, repo: Repository, queue: SharedJobQueue, mut stop: 
                 break;
             }
             job = queue.pop() => {
-                info!("received new job");
+                info!(name = job.name(), "received new job");
                 job.run(queue.clone(), &repo).await;
             }
         }

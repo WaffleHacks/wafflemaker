@@ -64,4 +64,8 @@ impl Job for PlanUpdate {
             }
         }
     }
+
+    fn name<'a>(&self) -> &'a str {
+        "plan_update"
+    }
 }

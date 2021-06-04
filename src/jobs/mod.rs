@@ -18,7 +18,11 @@ pub fn dispatch(queue: SharedJobQueue, job: impl Job + 'static) {
 /// A job that can be run in a separate thread
 #[async_trait]
 pub trait Job: Send + Sync {
-    async fn run(&self, queue: SharedJobQueue, repo: &Repository) {}
+    /// Run the job
+    async fn run(&self, queue: SharedJobQueue, repo: &Repository);
+
+    /// The name of the job
+    fn name<'a>(&self) -> &'a str;
 }
 
 /// Log error and stop execution from within a job
