@@ -6,7 +6,7 @@ mod diff;
 mod pull;
 mod service;
 
-use diff::DiffFile;
+pub use diff::{Action, DiffFile};
 use service::{Method, Return};
 
 type Result<T> = std::result::Result<T, git2::Error>;

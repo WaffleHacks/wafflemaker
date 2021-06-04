@@ -12,6 +12,7 @@ mod args;
 mod config;
 mod git;
 mod http;
+mod jobs;
 
 use args::Args;
 use git::Repository;
