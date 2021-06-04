@@ -54,7 +54,7 @@ mod tests {
         let token = "the-amazing:test-token";
         let header = format!("Basic {}", base64::encode(token));
 
-        assert!(docker(header, token.to_string()).is_ok());
+        assert!(docker(header, token).is_ok());
     }
 
     #[test]
