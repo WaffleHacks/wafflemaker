@@ -1,5 +1,5 @@
 use crate::git::Repository;
-use crate::jobs::SharedJobQueue;
+use crate::processor::jobs::SharedJobQueue;
 use tokio::{select, sync::watch::Receiver};
 use tracing::{info, instrument};
 

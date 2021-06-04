@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     git::Repository,
-    jobs::{self, PlanUpdate, SharedJobQueue},
+    processor::jobs::{self, PlanUpdate, SharedJobQueue},
 };
 use bytes::Bytes;
 use tracing::info;

@@ -8,15 +8,14 @@ use warp::{
     Filter,
 };
 
+use args::Args;
+use git::Repository;
+
 mod args;
 mod config;
 mod git;
 mod http;
-mod jobs;
 mod processor;
-
-use args::Args;
-use git::Repository;
 
 #[tokio::main]
 async fn main() -> Result<()> {

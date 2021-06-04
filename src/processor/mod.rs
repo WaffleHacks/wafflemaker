@@ -1,12 +1,12 @@
-use crate::{
-    git::Repository,
-    jobs::{JobQueue, SharedJobQueue},
-};
+use crate::git::Repository;
 use std::sync::Arc;
 use tokio::sync::watch;
 use tracing::info;
 
+pub mod jobs;
 mod worker;
+
+use jobs::{JobQueue, SharedJobQueue};
 
 /// Create a new job processor
 pub fn spawn(repo: Repository, num_workers: u32) -> (SharedJobQueue, watch::Sender<bool>) {

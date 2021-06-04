@@ -1,4 +1,4 @@
-use crate::{config::Config, git::Repository, jobs::SharedJobQueue};
+use crate::{config::Config, git::Repository, processor::jobs::SharedJobQueue};
 use std::{convert::Infallible, sync::Arc};
 use tracing::info;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
