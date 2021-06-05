@@ -4,7 +4,7 @@ use tokio::{select, sync::watch::Receiver};
 use tracing::{info, instrument};
 
 /// Process incoming job workloads
-#[instrument(skip(queue, repo, stop))]
+#[instrument(skip(path, queue, repo, stop))]
 pub async fn worker(
     id: u32,
     path: Arc<PathBuf>,
