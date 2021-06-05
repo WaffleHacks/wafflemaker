@@ -1,0 +1,68 @@
+# Docker information for the service to be deploy
+[docker]
+  # The base image for the service excluding the tag
+  image = "wafflehacks/cms"
+
+  # The tag(s) to allow for updating the service supports globs (via the globset crate)
+  tags = ["develop", "sha-*"]
+
+  # Whether to automatically update the service when a new image is built (default: true)
+  auto-update = true
+
+# What external services this depends on
+# Currently supports: PostgreSQL and Redis
+# Connection strings will be automatically injected into environment variables in the format: {service name}_URL
+# Ex: - POSTGRES_URL    - REDIS_URL
+[dependencies]
+  # A service can be explicitly enabled by setting it to false.
+  # If it is not included, it will default to disabled.
+  redis = false
+
+  # The environment variable can be changed by setting the value to the desired name.
+  # Environment variable names will be automatically made uppercase.
+  postgres = "DATABASE_URL"
+
+# Environment variables to pass to the container
+# All values must be strings, and the name will be automatically made uppercase when it is
+# injected into the container
+[environment]
+  some = "variable"
+  another = "value"
+  number = "1"
+  boolean = "true"
+
+# Secrets to pass to the container as environment variables
+# The location within Vault will be automatically derived from the subdomain and environment variable name
+# Ex: - subdomain = `git.wafflehacks.tech` name = `secret_key` --> /kv/git/secret_key
+#     - subdomain = `git.dev.wafflehacks.tech` name = `secret_key` --> /kv/dev/git/secret_key
+# Like the normal environment variables, the variable name will be automatically be made uppercase
+#
+# There are currently 3 types of secrets:
+#   - `aws`: retrieves AWS credentials for with the given role
+#   - `generate`: generates a random secret in the specified format
+#   - `load`: loads a pre-existing secret from vault
+[secrets]
+  # If the secret type does not require additional configuration (i.e. `load` secrets), then the type can be specified
+  # as a bare string or as a map. Otherwise, they must be specified as maps (inline or as blocks).
+  bare = "load"
+  # Inline map
+  inline = { type = "load" }
+  # Block map
+  [secrets.block]
+    type = "load"
+
+  [secrets.aws]
+    type = "aws"
+    # The role to generate the credentials from
+    # It must already exist in Vault
+    role = "my-role"
+
+  [secrets.generated]
+    type = "generate"
+    # The format to encode the generated string in
+    # Options: `alphanumeric`, `base64`, `hex`
+    format = "base64"
+    # The length of the string to generate
+    length = 16
+    # Whether to regenerate the secret on redeploy (default: false)
+    regenerate = false

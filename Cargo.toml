@@ -9,6 +9,7 @@ edition = "2018"
 
 [dependencies]
 # Configuration
+globset = "0.4"
 structopt = "0.3"
 toml = "0.5"
 
@@ -27,6 +28,7 @@ uuid = { version = "0.8", features = ["v4"] }
 deadqueue = { version = "0.2.0", default-features = false, features = ["unlimited"] }
 async-trait = "0.1"
 serde = { version = "1.0", features = ["derive"] }
+serde_with = "1.9"
 tokio = { version = "1.6", features = ["fs", "macros", "process", "rt", "rt-multi-thread", "signal"] }
 
 # Webhooks

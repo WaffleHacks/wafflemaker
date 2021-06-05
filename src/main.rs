@@ -16,6 +16,7 @@ mod config;
 mod git;
 mod http;
 mod processor;
+mod service;
 
 #[tokio::main]
 async fn main() -> Result<()> {
