@@ -18,7 +18,7 @@ pub async fn docker(
     config: SharedConfig,
     queue: SharedJobQueue,
 ) -> Result<impl Reply, Rejection> {
-    validators::docker(authorization, &config.docker.token)?;
+    validators::docker(authorization, &config.webhooks.docker)?;
 
     // TODO: check if image is allowed to be deployed
 
@@ -35,7 +35,7 @@ pub async fn github(
     repo: Repository,
     queue: SharedJobQueue,
 ) -> Result<impl Reply, Rejection> {
-    validators::github(&raw_body, raw_signature, config.github.secret.as_bytes())?;
+    validators::github(&raw_body, raw_signature, config.webhooks.github.as_bytes())?;
 
     let body: Github =
         serde_json::from_slice(&raw_body).map_err(|_| reject::custom(BodyDeserializeError))?;
@@ -55,7 +55,7 @@ pub async fn github(
     };
 
     // Check if the repository is allowed to be pulled
-    if &repository.name != &config.github.repository {
+    if repository.name != config.git.repository {
         return Err(reject::custom(UndeployableError));
     }
 

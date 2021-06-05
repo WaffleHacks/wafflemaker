@@ -18,9 +18,10 @@ pub type SharedConfig = Arc<Config>;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    pub deployment: Deployment,
+    pub git: Git,
     pub server: Server,
-    pub docker: Docker,
-    pub github: Github,
+    pub webhooks: Webhooks,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,22 +32,19 @@ pub struct Server {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Docker {
-    pub connection: Connection,
-    pub token: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Connection {
-    #[serde(flatten)]
-    pub connection_type: ConnectionType,
-    pub endpoint: String,
-    pub timeout: u64,
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum Deployment {
+    Docker {
+        #[serde(flatten)]
+        connection: Connection,
+        endpoint: String,
+        timeout: u64,
+    },
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum ConnectionType {
+#[serde(tag = "connection", rename_all = "lowercase")]
+pub enum Connection {
     Local,
     Http,
     Ssl {
@@ -57,16 +55,20 @@ pub enum ConnectionType {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Github {
+pub struct Git {
     pub clone_to: PathBuf,
     pub repository: String,
-    pub secret: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Webhooks {
+    pub docker: String,
+    pub github: String,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse;
-    use crate::config::ConnectionType;
+    use super::{parse, Connection, Deployment};
 
     #[tokio::test]
     async fn parse_config() {
@@ -77,18 +79,21 @@ mod tests {
         assert_eq!("127.0.0.1:8000", &config.server.address.to_string());
         assert_eq!("info", &config.server.log);
         assert_eq!(2, config.server.workers);
-        assert_eq!(
-            "unix:///var/run/docker.sock",
-            &config.docker.connection.endpoint
-        );
-        assert_eq!(120, config.docker.connection.timeout);
-        assert_eq!(
-            ConnectionType::Local,
-            config.docker.connection.connection_type
-        );
-        assert_eq!("please-change:this-token", &config.docker.token);
-        assert_eq!("./configuration", config.github.clone_to.to_str().unwrap());
-        assert_eq!("WaffleHacks/waffles", &config.github.repository);
-        assert_eq!("please-change-this-secret", &config.github.secret);
+
+        assert!(matches!(config.deployment, Deployment::Docker { .. }));
+        let Deployment::Docker {
+            connection,
+            endpoint,
+            timeout,
+        } = &config.deployment;
+        assert_eq!(&Connection::Local, connection);
+        assert_eq!("unix:///var/run/docker.sock", endpoint.as_str());
+        assert_eq!(&120, timeout);
+
+        assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
+        assert_eq!("WaffleHacks/waffles", &config.git.repository);
+
+        assert_eq!("please-change:this-token", &config.webhooks.docker);
+        assert_eq!("please-change-this-secret", &config.webhooks.github);
     }
 }

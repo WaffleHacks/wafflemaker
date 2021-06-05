@@ -34,8 +34,8 @@ async fn main() -> Result<()> {
         .unwrap_or_else(|| configuration.server.log.clone());
 
     // Ensure the clone directory exists
-    if !configuration.github.clone_to.exists() {
-        fs::create_dir_all(&configuration.github.clone_to)
+    if !configuration.git.clone_to.exists() {
+        fs::create_dir_all(&configuration.git.clone_to)
             .await
             .context("Failed to create configuration clone directory")?;
     }
@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         .init();
 
     // Connect to the repository service
-    let (repository, repository_handle) = Repository::connect(&configuration.github.clone_to);
+    let (repository, repository_handle) = Repository::connect(&configuration.git.clone_to);
 
     // Start the job processor
     let (job_queue, stop_job_processor) =
