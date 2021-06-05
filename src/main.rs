@@ -13,6 +13,7 @@ use git::Repository;
 
 mod args;
 mod config;
+mod deployer;
 mod git;
 mod http;
 mod processor;

@@ -18,6 +18,7 @@ git2 = "0.13"
 
 # Error handling
 anyhow = "1.0"
+thiserror = "1.0"
 
 # Logging
 tracing = "0.1"
