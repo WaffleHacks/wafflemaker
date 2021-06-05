@@ -1,7 +1,7 @@
-use crate::{config::SharedConfig, git::Repository};
+use crate::git::Repository;
 use async_trait::async_trait;
 use deadqueue::unlimited::Queue;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 mod plan_update;
 
@@ -19,7 +19,7 @@ pub fn dispatch(queue: SharedJobQueue, job: impl Job + 'static) {
 #[async_trait]
 pub trait Job: Send + Sync {
     /// Run the job
-    async fn run(&self, config: SharedConfig, queue: SharedJobQueue, repo: &Repository);
+    async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue, repo: &Repository);
 
     /// The name of the job
     fn name<'a>(&self) -> &'a str;

@@ -1,10 +1,10 @@
 use super::{Job, SharedJobQueue};
 use crate::{
-    config::SharedConfig,
     fail,
     git::{Action, Repository},
 };
 use async_trait::async_trait;
+use std::{path::PathBuf, sync::Arc};
 use tracing::{info, instrument, warn};
 
 #[derive(Debug)]
@@ -26,7 +26,7 @@ impl PlanUpdate {
 #[async_trait]
 impl Job for PlanUpdate {
     #[instrument(name = "plan_update", skip(self, queue, repo), fields(before = %self.before, after = %self.after))]
-    async fn run(&self, config: SharedConfig, queue: SharedJobQueue, repo: &Repository) {
+    async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue, repo: &Repository) {
         // Diff the deployment
         let files = fail!(
             repo.diff(self.before.to_string(), self.after.to_string())

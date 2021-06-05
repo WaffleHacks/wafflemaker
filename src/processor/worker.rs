@@ -1,5 +1,5 @@
-use crate::processor::jobs::SharedJobQueue;
-use crate::{config::SharedConfig, git::Repository};
+use crate::{git::Repository, processor::jobs::SharedJobQueue};
+use std::{path::PathBuf, sync::Arc};
 use tokio::{select, sync::watch::Receiver};
 use tracing::{info, instrument};
 
@@ -7,7 +7,7 @@ use tracing::{info, instrument};
 #[instrument(skip(queue, repo, stop))]
 pub async fn worker(
     id: u32,
-    config: SharedConfig,
+    path: Arc<PathBuf>,
     repo: Repository,
     queue: SharedJobQueue,
     mut stop: Receiver<bool>,
@@ -22,7 +22,7 @@ pub async fn worker(
             }
             job = queue.pop() => {
                 info!(name = job.name(), "received new job");
-                job.run(config.clone(), queue.clone(), &repo).await;
+                job.run(path.clone(), queue.clone(), &repo).await;
             }
         }
     }
