@@ -1,9 +1,9 @@
 use super::{
     errors::{BodyDeserializeError, GitError, UndeployableError},
     webhooks::{validators, Docker, Github},
-    SharedConfig,
 };
 use crate::{
+    config::SharedConfig,
     git::Repository,
     processor::jobs::{self, PlanUpdate, SharedJobQueue},
 };

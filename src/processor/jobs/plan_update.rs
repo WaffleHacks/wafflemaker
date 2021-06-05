@@ -1,5 +1,6 @@
 use super::{Job, SharedJobQueue};
 use crate::{
+    config::SharedConfig,
     fail,
     git::{Action, Repository},
 };
@@ -25,7 +26,7 @@ impl PlanUpdate {
 #[async_trait]
 impl Job for PlanUpdate {
     #[instrument(name = "plan_update", skip(self, queue, repo), fields(before = %self.before, after = %self.after))]
-    async fn run(&self, queue: SharedJobQueue, repo: &Repository) {
+    async fn run(&self, config: SharedConfig, queue: SharedJobQueue, repo: &Repository) {
         // Diff the deployment
         let files = fail!(
             repo.diff(self.before.to_string(), self.after.to_string())
@@ -54,11 +55,11 @@ impl Job for PlanUpdate {
             match diff.action {
                 Action::Modified => {
                     // TODO: spawn update job
-                    info!("updating service")
+                    info!(path = %diff.path.display(), "updating service")
                 }
                 Action::Deleted => {
                     // TODO: spawn delete job
-                    info!("deleting service")
+                    info!(path = %diff.path.display(), "deleting service")
                 }
                 _ => unreachable!(),
             }

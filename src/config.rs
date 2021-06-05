@@ -3,14 +3,18 @@ use serde::Deserialize;
 use std::{
     net::SocketAddr,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 use tokio::fs;
 
 /// Parse the configuration from a given file
-pub async fn parse<P: AsRef<Path>>(path: P) -> Result<Config> {
+pub async fn parse<P: AsRef<Path>>(path: P) -> Result<SharedConfig> {
     let raw = fs::read(path).await?;
-    Ok(toml::from_slice(&raw)?)
+    let data = toml::from_slice(&raw)?;
+    Ok(Arc::new(data))
 }
+
+pub type SharedConfig = Arc<Config>;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {

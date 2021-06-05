@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
 
     // Start the job processor
     let (job_queue, stop_job_processor) =
-        processor::spawn(repository.clone(), configuration.server.workers);
+        processor::spawn(repository.clone(), configuration.clone());
 
     // Setup the routes
     let routes = http::routes(configuration, repository.clone(), job_queue)
