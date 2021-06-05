@@ -19,7 +19,7 @@ pub struct Service {
 
 impl Service {
     /// Parse a service configuration from a given file
-    async fn parse<P: AsRef<Path>>(path: P) -> anyhow::Result<Service> {
+    pub async fn parse<P: AsRef<Path>>(path: P) -> anyhow::Result<Service> {
         let raw = fs::read(path).await?;
         Ok(toml::from_slice(&raw)?)
     }
