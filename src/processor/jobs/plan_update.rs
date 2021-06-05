@@ -1,11 +1,12 @@
-use super::{Job, SharedJobQueue};
+use super::{Job, SharedJobQueue, UpdateService};
+use crate::service::Service;
 use crate::{
     fail,
     git::{Action, Repository},
 };
 use async_trait::async_trait;
 use std::{path::PathBuf, sync::Arc};
-use tracing::{info, instrument, warn};
+use tracing::{error, info, instrument, warn};
 
 #[derive(Debug)]
 pub struct PlanUpdate {
@@ -54,12 +55,24 @@ impl Job for PlanUpdate {
                 continue;
             }
 
-            // TODO: parse configuration
-
             match diff.action {
                 Action::Modified => {
-                    // TODO: spawn update job
-                    info!(path = %diff.path.display(), "updating service")
+                    // Parse the configuration
+                    let config = match Service::parse(path.join(&diff.path)).await {
+                        Ok(c) => c,
+                        Err(e) => {
+                            error!(
+                                error = %e,
+                                path = %diff.path.display(),
+                                "failed to parse service configuration"
+                            );
+                            continue;
+                        }
+                    };
+
+                    // Spawn update job
+                    info!(path = %diff.path.display(), "updating service");
+                    super::dispatch(queue.clone(), UpdateService::new(config, diff.path));
                 }
                 Action::Deleted => {
                     // TODO: spawn delete job

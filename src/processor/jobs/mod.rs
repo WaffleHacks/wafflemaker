@@ -4,8 +4,10 @@ use deadqueue::unlimited::Queue;
 use std::{path::PathBuf, sync::Arc};
 
 mod plan_update;
+mod update_service;
 
 pub use plan_update::PlanUpdate;
+pub use update_service::UpdateService;
 
 pub type JobQueue = Queue<Box<dyn Job>>;
 pub type SharedJobQueue = Arc<JobQueue>;
