@@ -63,8 +63,6 @@ mod tests {
             .await
             .expect("failed to parse service");
 
-        println!("{:?}", service);
-
         assert_eq!(
             service.dependencies.postgres,
             Some(Dependency::Rename("DATABASE_URL".into()))
