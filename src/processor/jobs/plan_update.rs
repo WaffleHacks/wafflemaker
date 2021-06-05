@@ -1,4 +1,4 @@
-use super::{Job, SharedJobQueue, UpdateService};
+use super::{DeleteService, Job, SharedJobQueue, UpdateService};
 use crate::service::Service;
 use crate::{
     fail,
@@ -75,8 +75,9 @@ impl Job for PlanUpdate {
                     super::dispatch(queue.clone(), UpdateService::new(config, diff.path));
                 }
                 Action::Deleted => {
-                    // TODO: spawn delete job
-                    info!(path = %diff.path.display(), "deleting service")
+                    // Spawn delete job
+                    info!(path = %diff.path.display(), "deleting service");
+                    super::dispatch(queue.clone(), DeleteService::new(diff.path));
                 }
                 _ => unreachable!(),
             }

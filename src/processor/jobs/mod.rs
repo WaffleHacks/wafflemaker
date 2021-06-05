@@ -3,9 +3,11 @@ use async_trait::async_trait;
 use deadqueue::unlimited::Queue;
 use std::{path::PathBuf, sync::Arc};
 
+mod delete_service;
 mod plan_update;
 mod update_service;
 
+pub use delete_service::DeleteService;
 pub use plan_update::PlanUpdate;
 pub use update_service::UpdateService;
 
