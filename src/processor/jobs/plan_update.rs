@@ -25,7 +25,11 @@ impl PlanUpdate {
 
 #[async_trait]
 impl Job for PlanUpdate {
-    #[instrument(name = "plan_update", skip(self, queue, repo), fields(before = %self.before, after = %self.after))]
+    #[instrument(
+        name = "plan_update",
+        skip(self, path, queue, repo),
+        fields(before = %self.before, after = %self.after)
+    )]
     async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue, repo: &Repository) {
         // Diff the deployment
         let files = fail!(
