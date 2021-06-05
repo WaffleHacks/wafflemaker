@@ -60,8 +60,8 @@ fn handle_call(repo: &Repository, method: Method, tx: oneshot::Sender<Return>) {
             tx.send(Return::Diff(result))
                 .expect("failed to send on channel");
         }
-        Method::Pull(clone_url, refspec) => {
-            let result = pull::run(repo, &clone_url, &refspec);
+        Method::Pull(clone_url, refspec, latest) => {
+            let result = pull::run(repo, &clone_url, &refspec, &latest);
             tx.send(Return::Pull(result))
                 .expect("failed to send on channel");
         }
@@ -72,7 +72,7 @@ fn handle_call(repo: &Repository, method: Method, tx: oneshot::Sender<Return>) {
 /// The methods and their arguments that can be called
 #[derive(Debug)]
 pub enum Method {
-    Pull(String, String),
+    Pull(String, String, String),
     Diff(String, String),
     Shutdown,
 }
@@ -80,7 +80,7 @@ pub enum Method {
 impl Method {
     pub fn name(&self) -> &str {
         match self {
-            Self::Pull(_, _) => "pull",
+            Self::Pull(_, _, _) => "pull",
             Self::Diff(_, _) => "diff",
             Self::Shutdown => "shutdown",
         }

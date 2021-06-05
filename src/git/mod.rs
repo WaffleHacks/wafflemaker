@@ -24,10 +24,12 @@ impl Repository {
 
     /// Pull a reference from the given remote URL
     #[instrument(name = "pull_dispatch", skip(self))]
-    pub async fn pull(&self, clone_url: String, refspec: String) -> Result<()> {
+    pub async fn pull(&self, clone_url: String, refspec: String, latest: String) -> Result<()> {
         // Send command
         let (tx, rx) = oneshot::channel();
-        self.0.send((Method::Pull(clone_url, refspec), tx)).unwrap();
+        self.0
+            .send((Method::Pull(clone_url, refspec, latest), tx))
+            .unwrap();
 
         // Get the result
         match rx.await.unwrap() {

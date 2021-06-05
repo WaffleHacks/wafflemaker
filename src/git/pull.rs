@@ -1,13 +1,13 @@
 use super::Result;
 use git2::{
-    build::CheckoutBuilder, AnnotatedCommit, AutotagOption, FetchOptions, Reference, Remote,
-    RemoteCallbacks, Repository,
+    build::CheckoutBuilder, AnnotatedCommit, AutotagOption, FetchOptions, Oid, Reference, Remote,
+    RemoteCallbacks, Repository, ResetType,
 };
 use tracing::{debug, error, info, instrument};
 
 /// Pull a reference from the given remote URL
 #[instrument(name = "pull", skip(repo))]
-pub(crate) fn run(repo: &Repository, clone_url: &str, refspec: &str) -> Result<()> {
+pub(crate) fn run(repo: &Repository, clone_url: &str, refspec: &str, latest: &str) -> Result<()> {
     // Get the remote
     repo.remote_set_url("origin", clone_url)?;
     let remote = repo.find_remote("origin").unwrap();
@@ -23,11 +23,15 @@ pub(crate) fn run(repo: &Repository, clone_url: &str, refspec: &str) -> Result<(
     );
     merge(repo, refspec, fetch_commit)?;
 
+    // Checkout the latest commit
+    info!("checking out latest commit");
+    checkout(repo, latest)?;
+
     Ok(())
 }
 
 /// Fetch all the data in the given refspec
-#[instrument(name = "fetch", skip(repo, remote))]
+#[instrument(skip(repo, remote))]
 fn fetch<'r>(
     repo: &'r Repository,
     refspec: &str,
@@ -92,7 +96,6 @@ fn fetch<'r>(
 /// Merge the pulled branch and the current history
 /// Supports normal merge and fast-forwarding, but will not try to resolve conflicts.
 #[instrument(
-    name = "merge",
     skip(repo, fetch_commit),
     fields(commit = fetch_commit.refname().unwrap_or_default())
 )]
@@ -140,7 +143,6 @@ fn merge(repo: &Repository, refname: &str, fetch_commit: AnnotatedCommit) -> Res
 
 /// Perform a fast forward merge
 #[instrument(
-    name = "fast_forward",
     skip(repo, local_branch, remote_commit),
     fields(
         local_branch = local_branch.name().unwrap_or_default(),
@@ -157,6 +159,8 @@ fn fast_forward(
         Some(s) => s.to_string(),
         None => String::from_utf8_lossy(local_branch.name_bytes()).to_string(),
     };
+
+    println!("{:?}", remote_commit.refname());
 
     // Re-target the current branch
     local_branch.set_target(
@@ -183,7 +187,6 @@ fn fast_forward(
 
 /// Perform a normal merge
 #[instrument(
-    name = "normal_merge",
     skip(repo, local, remote),
     fields(
         local = local.refname().unwrap_or_default(),
@@ -227,6 +230,25 @@ fn normal_merge(
     )?;
 
     info!("successfully merged from {} to {}", remote.id(), local.id());
+
+    Ok(())
+}
+
+/// Checkout a specific commit and reset the working tree to it
+#[instrument(skip(repo))]
+fn checkout(repo: &Repository, hash: &str) -> Result<()> {
+    // Find the commit
+    let oid = Oid::from_str(hash)?;
+    let commit = repo.find_commit(oid)?;
+    debug!("converted hash to commit");
+
+    // Reset the current working tree to the desired commit
+    repo.reset(
+        commit.as_object(),
+        ResetType::Hard,
+        Some(CheckoutBuilder::default().force()),
+    )?;
+    debug!("reset to specified commit");
 
     Ok(())
 }

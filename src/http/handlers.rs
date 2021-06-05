@@ -60,7 +60,7 @@ pub async fn github(
     }
 
     // Pull the repository
-    repo.pull(repository.clone_url, reference)
+    repo.pull(repository.clone_url, reference, after.clone())
         .await
         .map_err(|e| reject::custom(GitError(e)))?;
 
