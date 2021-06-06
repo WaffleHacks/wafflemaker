@@ -18,7 +18,8 @@ pub struct Docker {
 impl Docker {
     /// Connect to a new docker instance
     #[instrument(
-        skip(connection, endpoint),
+        name = "docker",
+        skip(connection, endpoint, domain),
         fields(connection = connection.kind(), endpoint = endpoint.as_ref())
     )]
     pub async fn new<S: AsRef<str>>(
@@ -53,8 +54,8 @@ impl Docker {
         debug!("created docker connection");
 
         // Test connection
-        let response = instance.ping().await?;
-        info!(ping = %response, "connected to docker");
+        let id = instance.info().await?.id.unwrap_or_default();
+        info!(id = %id, "connected to docker");
 
         Ok(Self { instance, domain })
     }
