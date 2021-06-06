@@ -54,6 +54,17 @@ pub enum Connection {
     },
 }
 
+impl Connection {
+    /// A friendly name for the connection type
+    pub fn kind<'a>(&self) -> &'a str {
+        match self {
+            Self::Local => "local",
+            Self::Http => "http",
+            Self::Ssl { .. } => "ssl",
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Git {
     pub clone_to: PathBuf,

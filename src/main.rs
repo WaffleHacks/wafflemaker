@@ -49,6 +49,9 @@ async fn main() -> Result<()> {
     // Connect to the repository service
     let (repository, repository_handle) = Repository::connect(&configuration.git.clone_to);
 
+    // Connect to the deployment service
+    let deployer = deployer::connect(&configuration.deployment).await?;
+
     // Start the job processor
     let (job_queue, stop_job_processor) =
         processor::spawn(repository.clone(), configuration.clone());

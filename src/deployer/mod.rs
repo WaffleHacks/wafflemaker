@@ -1,15 +1,32 @@
+use crate::config::Deployment;
 use async_trait::async_trait;
 use std::collections::HashMap;
 
+mod docker;
 mod error;
 
+use docker::Docker;
+pub use error::Error;
 use error::Result;
+
+/// Connect to the deployer service
+pub async fn connect(config: &Deployment) -> Result<Box<dyn Deployer>> {
+    let deployer: Box<dyn Deployer> = match config {
+        Deployment::Docker {
+            connection,
+            endpoint,
+            timeout,
+        } => Box::new(Docker::new(connection, endpoint, timeout).await?),
+    };
+
+    Ok(deployer)
+}
 
 /// The interface for managing the deployments
 #[async_trait]
 pub trait Deployer: Send + Sync {
     /// Get a list of all the running services
-    async fn list(&self) -> Result<Vec<Service>>;
+    async fn list(&self) -> Result<Vec<ServiceInfo>>;
 
     /// Create a new service
     async fn create(&self, options: CreateOpts) -> Result<String>;
@@ -26,7 +43,7 @@ pub trait Deployer: Send + Sync {
 
 /// Information about a container
 #[derive(Debug)]
-pub struct Service {
+pub struct ServiceInfo {
     id: String,
     subdomain: String,
     image: String,
@@ -39,7 +56,7 @@ pub enum Status {
     Created,
     Running,
     Restarting,
-    Exited,
+    Stopped,
     Killed,
 }
 
