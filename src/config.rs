@@ -32,8 +32,15 @@ pub struct Server {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Deployment {
+    pub domain: String,
+    #[serde(flatten)]
+    pub engine: DeploymentEngine,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
-pub enum Deployment {
+pub enum DeploymentEngine {
     Docker {
         #[serde(flatten)]
         connection: Connection,
@@ -79,7 +86,7 @@ pub struct Webhooks {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse, Connection, Deployment};
+    use super::{parse, Connection, DeploymentEngine};
 
     #[tokio::test]
     async fn parse_config() {
@@ -91,12 +98,16 @@ mod tests {
         assert_eq!("info", &config.server.log);
         assert_eq!(2, config.server.workers);
 
-        assert!(matches!(config.deployment, Deployment::Docker { .. }));
-        let Deployment::Docker {
+        assert_eq!("wafflehacks.tech", &config.deployment.domain);
+        assert!(matches!(
+            config.deployment.engine,
+            DeploymentEngine::Docker { .. }
+        ));
+        let DeploymentEngine::Docker {
             connection,
             endpoint,
             timeout,
-        } = &config.deployment;
+        } = &config.deployment.engine;
         assert_eq!(&Connection::Local, connection);
         assert_eq!("unix:///var/run/docker.sock", endpoint.as_str());
         assert_eq!(&120, timeout);

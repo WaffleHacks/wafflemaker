@@ -13,6 +13,9 @@
 
 # The deployment engine configuration
 [deployment]
+  # The base domain where services are deployed on
+  domain = "wafflehacks.tech"
+
   # The type of deployer to use
   # Current supports:
   #   - docker (or any docker-compatible runtime)

@@ -1,4 +1,4 @@
-use crate::config::Deployment;
+use crate::config::{Deployment, DeploymentEngine};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -11,12 +11,13 @@ use error::Result;
 
 /// Connect to the deployer service
 pub async fn connect(config: &Deployment) -> Result<Box<dyn Deployer>> {
-    let deployer: Box<dyn Deployer> = match config {
-        Deployment::Docker {
+    let domain = config.domain.to_owned();
+    let deployer: Box<dyn Deployer> = match &config.engine {
+        DeploymentEngine::Docker {
             connection,
             endpoint,
             timeout,
-        } => Box::new(Docker::new(connection, endpoint, timeout).await?),
+        } => Box::new(Docker::new(connection, endpoint, timeout, domain).await?),
     };
 
     Ok(deployer)
@@ -119,7 +120,7 @@ impl CreateOptsBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::{CreateOpts, CreateOptsBuilder};
+    use super::CreateOpts;
     use std::collections::HashMap;
 
     #[test]

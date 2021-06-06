@@ -12,6 +12,7 @@ use tracing::{debug, info, instrument};
 #[derive(Debug)]
 pub struct Docker {
     instance: Bollard,
+    domain: String,
 }
 
 impl Docker {
@@ -24,6 +25,7 @@ impl Docker {
         connection: &Connection,
         endpoint: S,
         timeout: &u64,
+        domain: String,
     ) -> Result<Self> {
         let endpoint = endpoint.as_ref();
 
@@ -54,7 +56,7 @@ impl Docker {
         let response = instance.ping().await?;
         info!(ping = %response, "connected to docker");
 
-        Ok(Self { instance })
+        Ok(Self { instance, domain })
     }
 }
 
@@ -82,7 +84,7 @@ impl Deployer for Docker {
         let mut labels = HashMap::new();
         labels.insert(
             format!("traefik.http.routers.{}.rule", router_name),
-            format!("Host(`{}`)", options.subdomain), // TODO: add base domain
+            format!("Host(`{}.{}`)", options.subdomain, self.domain),
         );
         labels.insert(
             format!("traefik.http.routers.{}.tls.certresolver", router_name),
