@@ -1,6 +1,6 @@
 use crate::config::{Deployment, DeploymentEngine};
 use async_trait::async_trait;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 mod docker;
 mod error;
@@ -10,7 +10,7 @@ pub use error::Error;
 use error::Result;
 
 /// Connect to the deployer service
-pub async fn connect(config: &Deployment) -> Result<Box<dyn Deployer>> {
+pub async fn connect(config: &Deployment) -> Result<Arc<Box<dyn Deployer>>> {
     let domain = config.domain.to_owned();
     let deployer: Box<dyn Deployer> = match &config.engine {
         DeploymentEngine::Docker {
@@ -20,7 +20,7 @@ pub async fn connect(config: &Deployment) -> Result<Box<dyn Deployer>> {
         } => Box::new(Docker::new(connection, endpoint, timeout, domain).await?),
     };
 
-    Ok(deployer)
+    Ok(Arc::new(deployer))
 }
 
 /// The interface for managing the deployments

@@ -1,5 +1,5 @@
 use super::{Job, SharedJobQueue};
-use crate::git::Repository;
+use crate::{deployer::Deployer, git::Repository};
 use async_trait::async_trait;
 use std::{path::PathBuf, sync::Arc};
 use tracing::instrument;
@@ -21,10 +21,16 @@ impl DeleteService {
 impl Job for DeleteService {
     #[instrument(
         name = "delete_service",
-        skip(self, path, queue, repo),
+        skip(self, path, queue, repo, deployer),
         fields(name = %self.name)
     )]
-    async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue, repo: &Repository) {
+    async fn run(
+        &self,
+        path: Arc<PathBuf>,
+        queue: SharedJobQueue,
+        repo: &Repository,
+        deployer: Arc<Box<dyn Deployer>>,
+    ) {
         // TODO: begin deletion
     }
 

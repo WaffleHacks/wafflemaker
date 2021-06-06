@@ -1,15 +1,16 @@
-use crate::{git::Repository, processor::jobs::SharedJobQueue};
+use crate::{deployer::Deployer, git::Repository, processor::jobs::SharedJobQueue};
 use std::{path::PathBuf, sync::Arc};
 use tokio::{select, sync::watch::Receiver};
 use tracing::{info, instrument};
 
 /// Process incoming job workloads
-#[instrument(skip(path, queue, repo, stop))]
+#[instrument(skip(path, queue, repo, deployer, stop))]
 pub async fn worker(
     id: u32,
     path: Arc<PathBuf>,
     repo: Repository,
     queue: SharedJobQueue,
+    deployer: Arc<Box<dyn Deployer>>,
     mut stop: Receiver<bool>,
 ) {
     info!("started worker {}", id);
@@ -22,7 +23,7 @@ pub async fn worker(
             }
             job = queue.pop() => {
                 info!(name = job.name(), "received new job");
-                job.run(path.clone(), queue.clone(), &repo).await;
+                job.run(path.clone(), queue.clone(), &repo, deployer.clone()).await;
             }
         }
     }

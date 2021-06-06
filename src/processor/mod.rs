@@ -1,4 +1,4 @@
-use crate::{config::SharedConfig, git::Repository};
+use crate::{config::SharedConfig, deployer::Deployer, git::Repository};
 use std::sync::Arc;
 use tokio::sync::watch;
 use tracing::info;
@@ -9,7 +9,11 @@ mod worker;
 use jobs::{JobQueue, SharedJobQueue};
 
 /// Create a new job processor
-pub fn spawn(repo: Repository, config: SharedConfig) -> (SharedJobQueue, watch::Sender<bool>) {
+pub fn spawn(
+    repo: Repository,
+    deployer: Arc<Box<dyn Deployer>>,
+    config: SharedConfig,
+) -> (SharedJobQueue, watch::Sender<bool>) {
     let queue = Arc::new(JobQueue::new());
 
     // Register handler to stop processing
@@ -26,6 +30,7 @@ pub fn spawn(repo: Repository, config: SharedConfig) -> (SharedJobQueue, watch::
             path.clone(),
             repo.clone(),
             queue.clone(),
+            deployer.clone(),
             rx.clone(),
         ));
     }
