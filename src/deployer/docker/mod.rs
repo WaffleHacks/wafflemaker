@@ -63,6 +63,7 @@ impl Docker {
 
 #[async_trait]
 impl Deployer for Docker {
+    #[instrument(skip(self))]
     async fn list(&self) -> Result<Vec<ServiceInfo>> {
         Ok(self
             .instance
@@ -73,6 +74,7 @@ impl Deployer for Docker {
             .collect())
     }
 
+    #[instrument(skip(self), fields(subdomain = %options.subdomain, image = %options.image))]
     async fn create(&self, options: CreateOpts) -> Result<String> {
         let environment = options
             .environment
@@ -109,16 +111,19 @@ impl Deployer for Docker {
         Ok(result.id)
     }
 
+    #[instrument(skip(self))]
     async fn start(&self, id: String) -> Result<()> {
         self.instance.start_container::<&str>(&id, None).await?;
         Ok(())
     }
 
+    #[instrument(skip(self))]
     async fn stop(&self, id: String) -> Result<()> {
         self.instance.stop_container(&id, None).await?;
         Ok(())
     }
 
+    #[instrument(skip(self))]
     async fn delete(&self, id: String) -> Result<()> {
         self.instance
             .remove_container(
