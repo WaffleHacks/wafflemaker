@@ -1,0 +1,6 @@
+# The AWS credentials
+AWS_ACCESS_KEY_ID=AKIABCDEFGHIJKLMNOPQ
+AWS_SECRET_ACCESS_KEY=abcdefghijklmnopqrstuvwxyz0123456789ABCD
+
+# The region send requests to
+AWS_REGION=us-west-1

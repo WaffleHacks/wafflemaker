@@ -113,3 +113,4 @@ modules.xml
 ### Project files ###
 configuration/
 wafflemaker.toml
+.dockerenv

@@ -1,0 +1,43 @@
+version: "3"
+
+services: 
+  postgresql:
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    networks:
+      default:
+        ipv4_address: 172.96.0.2
+  
+  vault:
+    image: vault:1.7.2
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=dev-token
+    cap_add: 
+      - IPC_LOCK
+    volumes: 
+      - ./docker/vault.hcl:/vault/config/vault.hcl
+    networks:
+      default:
+        ipv4_address: 172.96.0.3
+    depends_on: 
+      - postgresql
+
+  setup:
+    image: wafflehacks/wafflemaker:setup
+    build: ./docker
+    env_file: ./.dockerenv
+    profiles:
+      - setup
+    networks:
+      - default
+    depends_on: 
+      - vault
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.96.0.0/16
