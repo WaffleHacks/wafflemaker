@@ -11,10 +11,10 @@ pub use secret::{Format, Secret};
 /// The configuration for a service
 #[derive(Debug, Deserialize)]
 pub struct Service {
-    dependencies: Dependencies,
-    docker: Docker,
-    environment: HashMap<String, String>,
-    secrets: HashMap<String, Secret>,
+    pub dependencies: Dependencies,
+    pub docker: Docker,
+    pub environment: HashMap<String, String>,
+    pub secrets: HashMap<String, Secret>,
 }
 
 impl Service {
@@ -28,8 +28,8 @@ impl Service {
 /// All the possible external dependencies a service can require.
 #[derive(Debug, Deserialize)]
 pub struct Dependencies {
-    postgres: Option<Dependency>,
-    redis: Option<Dependency>,
+    pub postgres: Option<Dependency>,
+    pub redis: Option<Dependency>,
 }
 
 /// The definition of a dependency service. `State` specifies whether it is enabled
@@ -46,11 +46,11 @@ pub enum Dependency {
 #[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct Docker {
-    image: String,
+    pub image: String,
     #[serde_as(as = "Vec<DisplayFromStr>")]
-    tags: Vec<Glob>,
+    pub tags: Vec<Glob>,
     #[serde(default, rename = "auto-update")]
-    auto_update: bool,
+    pub auto_update: bool,
 }
 
 #[cfg(test)]
