@@ -1,4 +1,4 @@
-use super::{DeleteService, Job, SharedJobQueue, UpdateService};
+use super::{DeleteService, Job, UpdateService};
 use crate::{
     fail,
     git::{self, Action},
@@ -30,10 +30,10 @@ impl PlanUpdate {
 impl Job for PlanUpdate {
     #[instrument(
         name = "plan_update",
-        skip(self, queue),
+        skip(self),
         fields(before = %self.before, after = %self.after)
     )]
-    async fn run(&self, queue: SharedJobQueue) {
+    async fn run(&self) {
         // Diff the deployment
         let files = fail!(
             git::instance()
@@ -75,12 +75,12 @@ impl Job for PlanUpdate {
 
                     // Spawn update job
                     info!(path = %diff.path.display(), "updating service");
-                    super::dispatch(queue.clone(), UpdateService::new(config, diff.path));
+                    super::dispatch(UpdateService::new(config, diff.path));
                 }
                 Action::Deleted => {
                     // Spawn delete job
                     info!(path = %diff.path.display(), "deleting service");
-                    super::dispatch(queue.clone(), DeleteService::new(diff.path));
+                    super::dispatch(DeleteService::new(diff.path));
                 }
                 _ => unreachable!(),
             }

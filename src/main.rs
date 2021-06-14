@@ -52,10 +52,10 @@ async fn main() -> Result<()> {
     deployer::initialize(&configuration.deployment).await?;
 
     // Start the job processor
-    let (job_queue, stop_job_processor) = processor::spawn(configuration.clone());
+    let stop_job_processor = processor::spawn(configuration.clone());
 
     // Setup the routes
-    let routes = http::routes(configuration, job_queue)
+    let routes = http::routes(configuration)
         .recover(http::recover)
         .with(trace_request());
 

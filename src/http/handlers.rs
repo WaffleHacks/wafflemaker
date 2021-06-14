@@ -5,7 +5,7 @@ use super::{
 use crate::{
     config::SharedConfig,
     git,
-    processor::jobs::{self, PlanUpdate, SharedJobQueue},
+    processor::jobs::{self, PlanUpdate},
 };
 use bytes::Bytes;
 use tracing::info;
@@ -16,7 +16,6 @@ pub async fn docker(
     body: Docker,
     authorization: String,
     config: SharedConfig,
-    queue: SharedJobQueue,
 ) -> Result<impl Reply, Rejection> {
     validators::docker(authorization, &config.webhooks.docker)?;
 
@@ -32,7 +31,6 @@ pub async fn github(
     raw_body: Bytes,
     raw_signature: String,
     config: SharedConfig,
-    queue: SharedJobQueue,
 ) -> Result<impl Reply, Rejection> {
     validators::github(&raw_body, raw_signature, config.webhooks.github.as_bytes())?;
 
@@ -65,7 +63,7 @@ pub async fn github(
         .map_err(|e| reject::custom(GitError(e)))?;
 
     // Start the update
-    jobs::dispatch(queue, PlanUpdate::new(&config.git.clone_to, before, after));
+    jobs::dispatch(PlanUpdate::new(&config.git.clone_to, before, after));
 
     Ok(StatusCode::NO_CONTENT)
 }

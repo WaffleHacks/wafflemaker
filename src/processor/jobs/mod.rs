@@ -1,5 +1,7 @@
+use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use deadqueue::unlimited::Queue;
+use once_cell::sync::Lazy;
 use std::sync::Arc;
 
 mod delete_service;
@@ -11,18 +13,25 @@ pub use plan_update::PlanUpdate;
 pub use update_service::UpdateService;
 
 pub type JobQueue = Queue<Box<dyn Job>>;
-pub type SharedJobQueue = Arc<JobQueue>;
+
+static STATIC_INSTANCE: Lazy<ArcSwap<JobQueue>> =
+    Lazy::new(|| ArcSwap::from_pointee(JobQueue::new()));
 
 /// Dispatch a job to one of the processors
-pub fn dispatch(queue: SharedJobQueue, job: impl Job + 'static) {
-    queue.push(Box::new(job))
+pub fn dispatch(job: impl Job + 'static) {
+    STATIC_INSTANCE.load().push(Box::new(job));
+}
+
+/// Retrieve an instance of the queue
+pub fn instance() -> Arc<JobQueue> {
+    STATIC_INSTANCE.load().clone()
 }
 
 /// A job that can be run in a separate thread
 #[async_trait]
 pub trait Job: Send + Sync {
     /// Run the job
-    async fn run(&self, queue: SharedJobQueue);
+    async fn run(&self);
 
     /// The name of the job
     fn name<'a>(&self) -> &'a str;

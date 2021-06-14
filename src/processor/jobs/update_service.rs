@@ -1,4 +1,4 @@
-use super::{Job, SharedJobQueue};
+use super::Job;
 use crate::service::Service;
 use async_trait::async_trait;
 use std::path::PathBuf;
@@ -22,10 +22,10 @@ impl UpdateService {
 impl Job for UpdateService {
     #[instrument(
         name = "update_service",
-        skip(self, _queue),
+        skip(self),
         fields(name = %self.name)
     )]
-    async fn run(&self, _queue: SharedJobQueue) {
+    async fn run(&self) {
         // TODO: begin deployment
     }
 

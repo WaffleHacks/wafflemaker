@@ -1,4 +1,4 @@
-use super::{Job, SharedJobQueue};
+use super::Job;
 use async_trait::async_trait;
 use std::path::PathBuf;
 use tracing::instrument;
@@ -20,10 +20,10 @@ impl DeleteService {
 impl Job for DeleteService {
     #[instrument(
         name = "delete_service",
-        skip(self, _queue),
+        skip(self),
         fields(name = %self.name)
     )]
-    async fn run(&self, _queue: SharedJobQueue) {
+    async fn run(&self) {
         // TODO: begin deletion
     }
 
