@@ -1,6 +1,5 @@
 use super::{DeleteService, Job, SharedJobQueue, UpdateService};
 use crate::{
-    deployer::Deployer,
     fail,
     git::{self, Action},
     service::Service,
@@ -29,15 +28,10 @@ impl PlanUpdate {
 impl Job for PlanUpdate {
     #[instrument(
         name = "plan_update",
-        skip(self, path, queue, deployer),
+        skip(self, path, queue),
         fields(before = %self.before, after = %self.after)
     )]
-    async fn run(
-        &self,
-        path: Arc<PathBuf>,
-        queue: SharedJobQueue,
-        deployer: Arc<Box<dyn Deployer>>,
-    ) {
+    async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue) {
         // Diff the deployment
         let files = fail!(
             git::instance()

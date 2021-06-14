@@ -1,5 +1,4 @@
 use super::{Job, SharedJobQueue};
-use crate::deployer::Deployer;
 use async_trait::async_trait;
 use std::{path::PathBuf, sync::Arc};
 use tracing::instrument;
@@ -21,15 +20,10 @@ impl DeleteService {
 impl Job for DeleteService {
     #[instrument(
         name = "delete_service",
-        skip(self, path, queue, deployer),
+        skip(self, path, queue),
         fields(name = %self.name)
     )]
-    async fn run(
-        &self,
-        path: Arc<PathBuf>,
-        queue: SharedJobQueue,
-        deployer: Arc<Box<dyn Deployer>>,
-    ) {
+    async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue) {
         // TODO: begin deletion
     }
 

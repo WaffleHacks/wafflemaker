@@ -38,6 +38,15 @@ pub struct Deployment {
     pub engine: DeploymentEngine,
 }
 
+impl Default for Deployment {
+    fn default() -> Deployment {
+        Deployment {
+            domain: "wafflehacks.tech".into(),
+            engine: Default::default(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum DeploymentEngine {
@@ -47,6 +56,16 @@ pub enum DeploymentEngine {
         endpoint: String,
         timeout: u64,
     },
+}
+
+impl Default for DeploymentEngine {
+    fn default() -> DeploymentEngine {
+        DeploymentEngine::Docker {
+            connection: Default::default(),
+            endpoint: "unix:///var/run/docker.sock".into(),
+            timeout: 10,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -59,6 +78,12 @@ pub enum Connection {
         certificate: PathBuf,
         key: PathBuf,
     },
+}
+
+impl Default for Connection {
+    fn default() -> Connection {
+        Connection::Local
+    }
 }
 
 impl Connection {

@@ -1,5 +1,7 @@
 use crate::config::{Deployment, DeploymentEngine};
+use arc_swap::ArcSwap;
 use async_trait::async_trait;
+use once_cell::sync::Lazy;
 use std::{collections::HashMap, sync::Arc};
 
 mod docker;
@@ -9,23 +11,47 @@ use docker::Docker;
 pub use error::Error;
 use error::Result;
 
+static STATIC_INSTANCE: Lazy<ArcSwap<Box<dyn Deployer>>> = Lazy::new(|| {
+    ArcSwap::from_pointee(
+        connect(&Deployment::default())
+            .expect("failed to connect to local docker socket for deployment"),
+    )
+});
+
 /// Connect to the deployer service
-pub async fn connect(config: &Deployment) -> Result<Arc<Box<dyn Deployer>>> {
+fn connect(config: &Deployment) -> Result<Box<dyn Deployer>> {
     let domain = config.domain.to_owned();
     let deployer: Box<dyn Deployer> = match &config.engine {
         DeploymentEngine::Docker {
             connection,
             endpoint,
             timeout,
-        } => Box::new(Docker::new(connection, endpoint, timeout, domain).await?),
+        } => Box::new(Docker::new(connection, endpoint, timeout, domain)?),
     };
 
-    Ok(Arc::new(deployer))
+    Ok(deployer)
+}
+
+/// Create the deployer service and test its connection
+pub async fn initialize(config: &Deployment) -> Result<()> {
+    let deployer = connect(config)?;
+    deployer.test().await?;
+
+    STATIC_INSTANCE.swap(Arc::from(deployer));
+    Ok(())
+}
+
+/// Retrieve an instance of the deployer service
+pub fn instance() -> Arc<Box<dyn Deployer>> {
+    STATIC_INSTANCE.load().clone()
 }
 
 /// The interface for managing the deployments
 #[async_trait]
 pub trait Deployer: Send + Sync {
+    /// Test the connection to the deployer
+    async fn test(&self) -> Result<()>;
+
     /// Get a list of all the running services
     async fn list(&self) -> Result<Vec<ServiceInfo>>;
 

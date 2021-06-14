@@ -49,10 +49,10 @@ async fn main() -> Result<()> {
     let repository_handle = git::initialize(&configuration.git.clone_to);
 
     // Connect to the deployment service
-    let deployer = deployer::connect(&configuration.deployment).await?;
+    deployer::initialize(&configuration.deployment).await?;
 
     // Start the job processor
-    let (job_queue, stop_job_processor) = processor::spawn(deployer, configuration.clone());
+    let (job_queue, stop_job_processor) = processor::spawn(configuration.clone());
 
     // Setup the routes
     let routes = http::routes(configuration, job_queue)

@@ -22,7 +22,7 @@ impl Docker {
         skip(connection, endpoint, domain),
         fields(connection = connection.kind(), endpoint = endpoint.as_ref())
     )]
-    pub async fn new<S: AsRef<str>>(
+    pub fn new<S: AsRef<str>>(
         connection: &Connection,
         endpoint: S,
         timeout: &u64,
@@ -53,16 +53,21 @@ impl Docker {
         };
         debug!("created docker connection");
 
-        // Test connection
-        let id = instance.info().await?.id.unwrap_or_default();
-        info!(id = %id, "connected to docker");
-
         Ok(Self { instance, domain })
     }
 }
 
 #[async_trait]
 impl Deployer for Docker {
+    #[instrument(skip(self))]
+    async fn test(&self) -> Result<()> {
+        let info = self.instance.info().await?;
+        let id = info.id.unwrap_or_default();
+        info!(id = %id, "connected to docker");
+
+        Ok(())
+    }
+
     #[instrument(skip(self))]
     async fn list(&self) -> Result<Vec<ServiceInfo>> {
         Ok(self

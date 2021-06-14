@@ -1,4 +1,3 @@
-use crate::deployer::Deployer;
 use async_trait::async_trait;
 use deadqueue::unlimited::Queue;
 use std::{path::PathBuf, sync::Arc};
@@ -23,12 +22,7 @@ pub fn dispatch(queue: SharedJobQueue, job: impl Job + 'static) {
 #[async_trait]
 pub trait Job: Send + Sync {
     /// Run the job
-    async fn run(
-        &self,
-        path: Arc<PathBuf>,
-        queue: SharedJobQueue,
-        deployer: Arc<Box<dyn Deployer>>,
-    );
+    async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue);
 
     /// The name of the job
     fn name<'a>(&self) -> &'a str;
