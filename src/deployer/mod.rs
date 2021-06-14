@@ -117,20 +117,21 @@ impl CreateOptsBuilder {
     }
 
     /// Set the subdomain
-    pub fn subdomain(mut self, name: String) -> Self {
-        self.subdomain = name;
+    pub fn subdomain<S: Into<String>>(mut self, name: S) -> Self {
+        self.subdomain = name.into();
         self
     }
 
     /// Set the image to deploy
-    pub fn image(mut self, image: String, tag: String) -> Self {
-        self.image = format!("{}:{}", image, tag);
+    pub fn image<S: Into<String>>(mut self, image: S, tag: S) -> Self {
+        self.image = format!("{}:{}", image.into(), tag.into());
         self
     }
 
     /// Add an environment variable
-    pub fn environment<I: Into<String>>(mut self, key: String, value: I) -> Self {
-        self.environment.insert(key.to_uppercase(), value.into());
+    pub fn environment<K: Into<String>, V: Into<String>>(mut self, key: K, value: V) -> Self {
+        self.environment
+            .insert(key.into().to_uppercase(), value.into());
         self
     }
 
@@ -165,14 +166,14 @@ mod tests {
             image: "wafflehacks/testing:latest".into(),
         };
         let from_builder = CreateOpts::builder()
-            .image("wafflehacks/testing".into(), "latest".into())
-            .subdomain("hello.world".into())
-            .environment("another".into(), "VaLuE")
+            .image("wafflehacks/testing", "latest")
+            .subdomain("hello.world")
+            .environment("another", "VaLuE")
             .environment(
-                "database_url".into(),
+                "database_url",
                 "postgres://user:password@0.0.0.0:5432/database",
             )
-            .environment("hello".into(), "world")
+            .environment("hello", "world")
             .build();
 
         assert_eq!(opts, from_builder);
