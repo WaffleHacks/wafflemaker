@@ -65,7 +65,7 @@ pub async fn github(
         .map_err(|e| reject::custom(GitError(e)))?;
 
     // Start the update
-    jobs::dispatch(queue, PlanUpdate::new(before, after));
+    jobs::dispatch(queue, PlanUpdate::new(&config.git.clone_to, before, after));
 
     Ok(StatusCode::NO_CONTENT)
 }

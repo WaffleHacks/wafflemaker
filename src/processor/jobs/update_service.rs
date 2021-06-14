@@ -1,7 +1,7 @@
 use super::{Job, SharedJobQueue};
 use crate::service::Service;
 use async_trait::async_trait;
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use tracing::instrument;
 
 #[derive(Debug)]
@@ -22,10 +22,10 @@ impl UpdateService {
 impl Job for UpdateService {
     #[instrument(
         name = "update_service",
-        skip(self, path, queue),
+        skip(self, _queue),
         fields(name = %self.name)
     )]
-    async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue) {
+    async fn run(&self, _queue: SharedJobQueue) {
         // TODO: begin deployment
     }
 

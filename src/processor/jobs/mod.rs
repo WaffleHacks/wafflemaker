@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use deadqueue::unlimited::Queue;
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 mod delete_service;
 mod plan_update;
@@ -22,7 +22,7 @@ pub fn dispatch(queue: SharedJobQueue, job: impl Job + 'static) {
 #[async_trait]
 pub trait Job: Send + Sync {
     /// Run the job
-    async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue);
+    async fn run(&self, queue: SharedJobQueue);
 
     /// The name of the job
     fn name<'a>(&self) -> &'a str;

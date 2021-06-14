@@ -5,19 +5,21 @@ use crate::{
     service::Service,
 };
 use async_trait::async_trait;
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use tracing::{error, info, instrument, warn};
 
 #[derive(Debug)]
 pub struct PlanUpdate {
+    base_path: PathBuf,
     before: String,
     after: String,
 }
 
 impl PlanUpdate {
     /// Create a new plan update job
-    pub fn new<S: Into<String>>(before: S, after: S) -> Self {
+    pub fn new<S: Into<String>, P: Into<PathBuf>>(base_path: P, before: S, after: S) -> Self {
         Self {
+            base_path: base_path.into(),
             before: before.into(),
             after: after.into(),
         }
@@ -28,10 +30,10 @@ impl PlanUpdate {
 impl Job for PlanUpdate {
     #[instrument(
         name = "plan_update",
-        skip(self, path, queue),
+        skip(self, queue),
         fields(before = %self.before, after = %self.after)
     )]
-    async fn run(&self, path: Arc<PathBuf>, queue: SharedJobQueue) {
+    async fn run(&self, queue: SharedJobQueue) {
         // Diff the deployment
         let files = fail!(
             git::instance()
@@ -59,7 +61,7 @@ impl Job for PlanUpdate {
             match diff.action {
                 Action::Modified => {
                     // Parse the configuration
-                    let config = match Service::parse(path.join(&diff.path)).await {
+                    let config = match Service::parse(self.base_path.join(&diff.path)).await {
                         Ok(c) => c,
                         Err(e) => {
                             error!(

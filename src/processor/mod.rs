@@ -17,11 +17,9 @@ pub fn spawn(config: SharedConfig) -> (SharedJobQueue, watch::Sender<bool>) {
 
     info!(count = config.server.workers, "spawning job workers");
 
-    let path = Arc::new(config.git.clone_to.clone());
-
     // Spawn the workers
     for id in 0..config.server.workers {
-        tokio::spawn(worker::worker(id, path.clone(), queue.clone(), rx.clone()));
+        tokio::spawn(worker::worker(id, queue.clone(), rx.clone()));
     }
 
     (queue, tx)
