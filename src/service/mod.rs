@@ -11,9 +11,12 @@ pub use secret::{Format, Secret};
 /// The configuration for a service
 #[derive(Debug, Deserialize)]
 pub struct Service {
+    #[serde(default)]
     pub dependencies: Dependencies,
     pub docker: Docker,
+    #[serde(default)]
     pub environment: HashMap<String, String>,
+    #[serde(default)]
     pub secrets: HashMap<String, Secret>,
 }
 
@@ -26,7 +29,7 @@ impl Service {
 }
 
 /// All the possible external dependencies a service can require.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct Dependencies {
     pub postgres: Option<Dependency>,
     pub redis: Option<Dependency>,
@@ -47,10 +50,32 @@ pub enum Dependency {
 #[derive(Debug, Deserialize)]
 pub struct Docker {
     pub image: String,
+    pub tag: String,
+    #[serde(default)]
+    pub update: AutoUpdate,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize)]
+pub struct AutoUpdate {
+    #[serde(default)]
     #[serde_as(as = "Vec<DisplayFromStr>")]
-    pub tags: Vec<Glob>,
-    #[serde(default, rename = "auto-update")]
-    pub auto_update: bool,
+    pub additional_tags: Vec<Glob>,
+    #[serde(default = "automatic_default")]
+    pub automatic: bool,
+}
+
+impl Default for AutoUpdate {
+    fn default() -> AutoUpdate {
+        AutoUpdate {
+            additional_tags: Vec::new(),
+            automatic: true,
+        }
+    }
+}
+
+fn automatic_default() -> bool {
+    true
 }
 
 #[cfg(test)]
@@ -69,8 +94,9 @@ mod tests {
         );
         assert_eq!(service.dependencies.redis, Some(Dependency::State(false)));
         assert_eq!(service.docker.image, "wafflehacks/cms");
-        assert_eq!(service.docker.auto_update, true);
-        assert_eq!(service.docker.tags.len(), 2);
+        assert_eq!(service.docker.tag, "develop");
+        assert_eq!(service.docker.update.automatic, true);
+        assert_eq!(service.docker.update.additional_tags.len(), 1);
         assert_eq!(service.environment.len(), 4);
         assert_eq!(service.secrets.len(), 5);
     }

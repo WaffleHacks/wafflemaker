@@ -3,11 +3,17 @@
   # The base image for the service excluding the tag
   image = "wafflehacks/cms"
 
-  # The tag(s) to allow for updating the service supports globs (via the globset crate)
-  tags = ["develop", "sha-*"]
+  # The base tag to deploy
+  tag = "develop"
 
-  # Whether to automatically update the service when a new image is built (default: true)
-  auto-update = true
+  # Image update configuration
+  [docker.update]
+    # Allow automatic updating when a new image is built (default: true)
+    automatic = true
+
+    # Any additional tag(s) to allow for updating the service supports globs (via the globset crate)
+    # Automatically includes the base tag
+    additional_tags = ["sha-*"]
 
 # What external services this depends on
 # Currently supports: PostgreSQL and Redis
