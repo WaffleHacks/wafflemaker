@@ -100,4 +100,20 @@ mod tests {
         assert_eq!(service.environment.len(), 4);
         assert_eq!(service.secrets.len(), 5);
     }
+
+    #[tokio::test]
+    async fn defaults() {
+        let service = Service::parse("./testdata/service/minimal.toml")
+            .await
+            .expect("failed to parse service");
+
+        assert_eq!(service.dependencies.postgres, None);
+        assert_eq!(service.dependencies.redis, None);
+        assert_eq!(service.docker.image, "wafflehacks/cms");
+        assert_eq!(service.docker.tag, "develop");
+        assert_eq!(service.docker.update.automatic, true);
+        assert_eq!(service.docker.update.additional_tags.len(), 0);
+        assert_eq!(service.environment.len(), 0);
+        assert_eq!(service.secrets.len(), 0);
+    }
 }
