@@ -29,9 +29,8 @@ impl PlanUpdate {
 #[async_trait]
 impl Job for PlanUpdate {
     #[instrument(
-        name = "plan_update",
         skip(self),
-        fields(before = %self.before, after = %self.after)
+        fields(before = %self.before, after = %self.after, name = %self.name())
     )]
     async fn run(&self) {
         // Diff the deployment

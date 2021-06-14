@@ -18,11 +18,7 @@ impl DeleteService {
 
 #[async_trait]
 impl Job for DeleteService {
-    #[instrument(
-        name = "delete_service",
-        skip(self),
-        fields(name = %self.name)
-    )]
+    #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
         // TODO: begin deletion
     }

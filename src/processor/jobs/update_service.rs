@@ -20,11 +20,7 @@ impl UpdateService {
 
 #[async_trait]
 impl Job for UpdateService {
-    #[instrument(
-        name = "update_service",
-        skip(self),
-        fields(name = %self.name)
-    )]
+    #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
         // TODO: begin deployment
     }
