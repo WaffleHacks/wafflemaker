@@ -1,4 +1,10 @@
-use std::{path::Path, sync::mpsc, thread::JoinHandle};
+use arc_swap::ArcSwap;
+use once_cell::sync::Lazy;
+use std::{
+    path::Path,
+    sync::{mpsc, Arc},
+    thread::JoinHandle,
+};
 use tokio::sync::oneshot;
 use tracing::instrument;
 
@@ -11,17 +17,14 @@ use service::{Method, Return};
 
 type Result<T> = std::result::Result<T, git2::Error>;
 
+static STATIC_INSTANCE: Lazy<ArcSwap<Repository>> =
+    Lazy::new(|| ArcSwap::from_pointee(Repository::default()));
+
 /// A high-level async wrapper around `git2::Repository`
 #[derive(Clone)]
 pub struct Repository(mpsc::SyncSender<(Method, oneshot::Sender<Return>)>);
 
 impl Repository {
-    /// Start and connect to the git service
-    pub fn connect<P: AsRef<Path>>(path: P) -> (Self, JoinHandle<()>) {
-        let (channel, handle) = service::spawn(path);
-        (Self(channel), handle)
-    }
-
     /// Pull a reference from the given remote URL
     #[instrument(name = "pull_dispatch", skip(self))]
     pub async fn pull(&self, clone_url: String, refspec: String, latest: String) -> Result<()> {
@@ -53,9 +56,28 @@ impl Repository {
     }
 
     /// Signal the service to shutdown
-    pub fn shutdown(self) {
+    pub fn shutdown(&self) {
         // Notify of shutdown
         let (tx, _) = oneshot::channel();
         self.0.send((Method::Shutdown, tx)).unwrap();
     }
+}
+
+impl Default for Repository {
+    fn default() -> Repository {
+        let (channel, _) = service::spawn("./configuration");
+        Repository(channel)
+    }
+}
+
+/// Start and connect to the git service
+pub fn initialize<P: AsRef<Path>>(path: P) -> JoinHandle<()> {
+    let (channel, handle) = service::spawn(path);
+    STATIC_INSTANCE.swap(Arc::from(Repository(channel)));
+    handle
+}
+
+/// Retrieve an instance of the repository
+pub fn instance() -> Arc<Repository> {
+    STATIC_INSTANCE.load().clone()
 }

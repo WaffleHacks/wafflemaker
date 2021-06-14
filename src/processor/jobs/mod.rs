@@ -1,4 +1,4 @@
-use crate::{deployer::Deployer, git::Repository};
+use crate::deployer::Deployer;
 use async_trait::async_trait;
 use deadqueue::unlimited::Queue;
 use std::{path::PathBuf, sync::Arc};
@@ -27,7 +27,6 @@ pub trait Job: Send + Sync {
         &self,
         path: Arc<PathBuf>,
         queue: SharedJobQueue,
-        repo: &Repository,
         deployer: Arc<Box<dyn Deployer>>,
     );
 

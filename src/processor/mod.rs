@@ -1,4 +1,4 @@
-use crate::{config::SharedConfig, deployer::Deployer, git::Repository};
+use crate::{config::SharedConfig, deployer::Deployer};
 use std::sync::Arc;
 use tokio::sync::watch;
 use tracing::info;
@@ -10,7 +10,6 @@ use jobs::{JobQueue, SharedJobQueue};
 
 /// Create a new job processor
 pub fn spawn(
-    repo: Repository,
     deployer: Arc<Box<dyn Deployer>>,
     config: SharedConfig,
 ) -> (SharedJobQueue, watch::Sender<bool>) {
@@ -28,7 +27,6 @@ pub fn spawn(
         tokio::spawn(worker::worker(
             id,
             path.clone(),
-            repo.clone(),
             queue.clone(),
             deployer.clone(),
             rx.clone(),

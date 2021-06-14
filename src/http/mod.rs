@@ -1,4 +1,4 @@
-use crate::{config::SharedConfig, git::Repository, processor::jobs::SharedJobQueue};
+use crate::{config::SharedConfig, processor::jobs::SharedJobQueue};
 use std::convert::Infallible;
 use tracing::info;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
@@ -17,13 +17,6 @@ fn with_config(
     warp::any().map(move || config.clone())
 }
 
-/// Allow the repository to be cloned between handlers
-fn with_repository(
-    repo: Repository,
-) -> impl Filter<Extract = (Repository,), Error = Infallible> + Clone {
-    warp::any().map(move || repo.clone())
-}
-
 /// Allow job queue to be cloned between handlers
 fn with_queue(
     queue: SharedJobQueue,
@@ -34,7 +27,6 @@ fn with_queue(
 /// Build the routes for the API
 pub fn routes(
     config: SharedConfig,
-    repo: Repository,
     queue: SharedJobQueue,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     // Docker webhook route
@@ -55,7 +47,6 @@ pub fn routes(
         .and(warp::body::bytes())
         .and(warp::header::<String>("X-Hub-Signature-256"))
         .and(with_config(config))
-        .and(with_repository(repo))
         .and(with_queue(queue))
         .and_then(handlers::github)
         .with(warp::trace::named("docker"));

@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     config::SharedConfig,
-    git::Repository,
+    git,
     processor::jobs::{self, PlanUpdate, SharedJobQueue},
 };
 use bytes::Bytes;
@@ -32,7 +32,6 @@ pub async fn github(
     raw_body: Bytes,
     raw_signature: String,
     config: SharedConfig,
-    repo: Repository,
     queue: SharedJobQueue,
 ) -> Result<impl Reply, Rejection> {
     validators::github(&raw_body, raw_signature, config.webhooks.github.as_bytes())?;
@@ -60,7 +59,8 @@ pub async fn github(
     }
 
     // Pull the repository
-    repo.pull(repository.clone_url, reference, after.clone())
+    git::instance()
+        .pull(repository.clone_url, reference, after.clone())
         .await
         .map_err(|e| reject::custom(GitError(e)))?;
 
