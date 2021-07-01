@@ -114,3 +114,4 @@ modules.xml
 configuration/
 wafflemaker.toml
 .dockerenv
+state/

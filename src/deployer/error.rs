@@ -1,4 +1,6 @@
 use bollard::errors::Error as BollardError;
+use sled::Error as SledError;
+use std::{io::Error as IoError, string::FromUtf8Error};
 use thiserror::Error as ThisError;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
@@ -20,6 +22,10 @@ pub enum Error {
     Exists(#[source] ErrorSource),
     #[error("request timed out")]
     Timeout(#[source] ErrorSource),
+    #[error("unable to save state")]
+    State(#[source] ErrorSource),
+    #[error("an i/o error occurred")]
+    Io(#[from] IoError),
     #[error("an unknown error occurred")]
     Unknown(#[source] ErrorSource),
 }
@@ -29,6 +35,10 @@ pub enum Error {
 pub enum ErrorSource {
     #[error(transparent)]
     Docker(#[from] BollardError),
+    #[error(transparent)]
+    Sled(#[from] SledError),
+    #[error(transparent)]
+    Utf8(#[from] FromUtf8Error),
 }
 
 impl From<BollardError> for Error {
@@ -55,5 +65,20 @@ impl From<BollardError> for Error {
             BollardError::RequestTimeoutError => Self::Timeout(error.into()),
             e => Self::Unknown(e.into()),
         }
+    }
+}
+
+impl From<SledError> for Error {
+    fn from(error: SledError) -> Error {
+        match error {
+            SledError::Io(e) => Error::Io(e.into()),
+            e => Error::State(e.into()),
+        }
+    }
+}
+
+impl From<FromUtf8Error> for Error {
+    fn from(error: FromUtf8Error) -> Error {
+        Error::Parsing(error.into())
     }
 }

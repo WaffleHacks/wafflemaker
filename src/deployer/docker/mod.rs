@@ -3,32 +3,40 @@ use crate::config::Connection;
 use async_trait::async_trait;
 use bollard::{
     container::{Config as CreateContainerConfig, RemoveContainerOptions},
-    models::ContainerSummaryInner,
+    models::ContainerStateStatusEnum,
     Docker as Bollard, API_DEFAULT_VERSION,
 };
-use std::collections::HashMap;
-use tracing::{debug, info, instrument};
+use sled::{Config, Db, Mode};
+use std::{collections::HashMap, fs, path::Path};
+use tracing::{debug, error, info, instrument};
 
 #[derive(Debug)]
 pub struct Docker {
     instance: Bollard,
     domain: String,
+    state: Db,
 }
 
 impl Docker {
     /// Connect to a new docker instance
     #[instrument(
         name = "docker",
-        skip(connection, endpoint, domain),
-        fields(connection = connection.kind(), endpoint = endpoint.as_ref())
+        skip(connection, endpoint, domain, path),
+        fields(
+            connection = connection.kind(),
+            endpoint = endpoint.as_ref(),
+            state = path.as_ref().to_str().unwrap()
+        )
     )]
-    pub fn new<S: AsRef<str>>(
+    pub fn new<S: AsRef<str>, P: AsRef<Path>>(
         connection: &Connection,
         endpoint: S,
         timeout: &u64,
         domain: String,
+        path: P,
     ) -> Result<Self> {
         let endpoint = endpoint.as_ref();
+        let path = path.as_ref();
 
         // Create the connection
         let instance = match connection {
@@ -53,7 +61,40 @@ impl Docker {
         };
         debug!("created docker connection");
 
-        Ok(Self { instance, domain })
+        // Create the database folder if not exists
+        if !path.exists() {
+            fs::create_dir_all(path)?;
+        }
+
+        // Open the state database with a 32MB cache and save to disk every 1s
+        let state = Config::new()
+            .path(path)
+            .cache_capacity(32 * 1024 * 1024)
+            .flush_every_ms(Some(1000))
+            .mode(Mode::HighThroughput)
+            .use_compression(true)
+            .open()?;
+
+        Ok(Self {
+            instance,
+            domain,
+            state,
+        })
+    }
+
+    /// Convert a deployment name to a docker id
+    fn id_from_name<S: AsRef<str>>(&self, name: S) -> Result<String> {
+        let tree = self.state.open_tree(name.as_ref())?;
+        Self::get_string(&tree, "id").transpose().unwrap()
+    }
+
+    /// Retrieve a string from a given key
+    fn get_string<K: AsRef<[u8]>>(tree: &sled::Tree, key: K) -> Result<Option<String>> {
+        Ok(tree
+            .get(key)?
+            .map(|v| v.to_vec())
+            .map(String::from_utf8)
+            .transpose()?)
     }
 }
 
@@ -70,35 +111,64 @@ impl Deployer for Docker {
 
     #[instrument(skip(self))]
     async fn list(&self) -> Result<Vec<ServiceInfo>> {
-        Ok(self
-            .instance
-            .list_containers::<&str>(None)
-            .await?
-            .into_iter()
-            .map(From::from)
-            .collect())
+        let mut deployments = Vec::new();
+        for name in self.state.tree_names() {
+            let tree = self.state.open_tree(name)?;
+            let id = Self::get_string(&tree, "id").transpose().unwrap()?;
+            let image = Self::get_string(&tree, "image").transpose().unwrap()?;
+            let domain = Self::get_string(&tree, "domain")?;
+
+            let container_info = self.instance.inspect_container(&id, None).await?;
+            let status = container_info.state.unwrap().status.unwrap().into();
+
+            deployments.push(ServiceInfo {
+                id,
+                domain,
+                image,
+                status,
+            })
+        }
+
+        Ok(deployments)
     }
 
-    #[instrument(skip(self), fields(subdomain = %options.subdomain, image = %options.image))]
+    #[instrument(
+        skip(self),
+        fields(name = %options.name, web = %options.domain.is_some(), image = %options.image))
+    ]
     async fn create(&self, options: CreateOpts) -> Result<String> {
+        let tree = self.state.open_tree(&options.name)?;
+        tree.insert("image", options.image.as_str())?;
+
         let environment = options
             .environment
             .into_iter()
             .map(|(k, v)| format!("{}={}", k, v))
             .collect();
 
-        // Define the labels
-        let router_name = options.subdomain.replace(".", "-");
         let mut labels = HashMap::new();
+
+        if let Some(domain) = &options.domain {
+            // Add routing labels
+            let router_name = domain.replace(".", "-");
+            labels.insert(
+                format!("traefik.http.routers.{}.rule", router_name),
+                format!("Host(`{}`)", domain),
+            );
+            labels.insert(
+                format!("traefik.http.routers.{}.tls.certresolver", router_name),
+                "letsencrypt".to_string(),
+            );
+
+            // Store the domain being used
+            tree.insert("domain", domain.as_str())?;
+        }
+
+        // Enable traefik if a domain is added
         labels.insert(
-            format!("traefik.http.routers.{}.rule", router_name),
-            format!("Host(`{}.{}`)", options.subdomain, self.domain),
+            "traefik.enable".to_string(),
+            options.domain.is_some().to_string(),
         );
-        labels.insert(
-            format!("traefik.http.routers.{}.tls.certresolver", router_name),
-            "letsencrypt".to_string(),
-        );
-        labels.insert("traefik.enable".to_string(), "true".to_string());
 
         let config = CreateContainerConfig {
             image: Some(options.image),
@@ -113,23 +183,29 @@ impl Deployer for Docker {
             .instance
             .create_container::<&str, _>(None, config)
             .await?;
+
+        tree.insert("id", result.id.as_str())?;
+
         Ok(result.id)
     }
 
     #[instrument(skip(self))]
-    async fn start(&self, id: String) -> Result<()> {
+    async fn start(&self, name: String) -> Result<()> {
+        let id = self.id_from_name(name)?;
         self.instance.start_container::<&str>(&id, None).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
-    async fn stop(&self, id: String) -> Result<()> {
+    async fn stop(&self, name: String) -> Result<()> {
+        let id = self.id_from_name(name)?;
         self.instance.stop_container(&id, None).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
-    async fn delete(&self, id: String) -> Result<()> {
+    async fn delete(&self, name: String) -> Result<()> {
+        let id = self.id_from_name(&name)?;
         self.instance
             .remove_container(
                 &id,
@@ -140,43 +216,32 @@ impl Deployer for Docker {
                 }),
             )
             .await?;
+
+        // Remove the state for the deployment
+        self.state.drop_tree(name.as_str())?;
+
         Ok(())
     }
 }
 
-impl From<ContainerSummaryInner> for ServiceInfo {
-    fn from(summary: ContainerSummaryInner) -> ServiceInfo {
-        // Extract the subdomain from the router label
-        let mut subdomain = String::new();
-        for (label, _) in summary.labels.unwrap_or_default().into_iter() {
-            if let Some(s) = label
-                .strip_prefix("traefik.http.routers.")
-                .map(|l| l.strip_suffix(".rule"))
-                .flatten()
-                .map(|l| l.replace("-", "."))
-            {
-                subdomain = s;
-                break;
-            }
-        }
-
-        ServiceInfo {
-            id: summary.id.unwrap_or_default(),
-            image: summary.image.unwrap_or_default(),
-            status: summary.status.unwrap_or_default().into(),
-            subdomain,
+impl Drop for Docker {
+    fn drop(&mut self) {
+        if let Err(e) = self.state.flush() {
+            error!("failed to flush state database: {}", e)
         }
     }
 }
 
-impl From<String> for Status {
-    fn from(s: String) -> Status {
-        match s.as_str() {
-            "created" => Status::Created,
-            "running" => Status::Running,
-            "paused" | "exited" | "removing" => Status::Stopped,
-            "restarting" => Status::Restarting,
-            "dead" => Status::Killed,
+impl From<ContainerStateStatusEnum> for Status {
+    fn from(state: ContainerStateStatusEnum) -> Status {
+        use ContainerStateStatusEnum::*;
+
+        match state {
+            CREATED => Status::Created,
+            RUNNING => Status::Running,
+            PAUSED | EXITED | REMOVING => Status::Stopped,
+            RESTARTING => Status::Restarting,
+            DEAD => Status::Killed,
             _ => unreachable!(),
         }
     }

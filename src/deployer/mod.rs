@@ -6,17 +6,14 @@ use std::{collections::HashMap, sync::Arc};
 
 mod docker;
 mod error;
+mod noop;
 
 use docker::Docker;
 pub use error::Error;
 use error::Result;
 
-static STATIC_INSTANCE: Lazy<ArcSwap<Box<dyn Deployer>>> = Lazy::new(|| {
-    ArcSwap::from_pointee(
-        connect(&Deployment::default())
-            .expect("failed to connect to local docker socket for deployment"),
-    )
-});
+static STATIC_INSTANCE: Lazy<ArcSwap<Box<dyn Deployer>>> =
+    Lazy::new(|| ArcSwap::from_pointee(Box::new(noop::Noop)));
 
 /// Connect to the deployer service
 fn connect(config: &Deployment) -> Result<Box<dyn Deployer>> {
@@ -26,7 +23,8 @@ fn connect(config: &Deployment) -> Result<Box<dyn Deployer>> {
             connection,
             endpoint,
             timeout,
-        } => Box::new(Docker::new(connection, endpoint, timeout, domain)?),
+            state,
+        } => Box::new(Docker::new(connection, endpoint, timeout, domain, state)?),
     };
 
     Ok(deployer)
@@ -59,20 +57,20 @@ pub trait Deployer: Send + Sync {
     async fn create(&self, options: CreateOpts) -> Result<String>;
 
     /// Start a service
-    async fn start(&self, id: String) -> Result<()>;
+    async fn start(&self, name: String) -> Result<()>;
 
     /// Stop a service
-    async fn stop(&self, id: String) -> Result<()>;
+    async fn stop(&self, name: String) -> Result<()>;
 
     /// Delete a service
-    async fn delete(&self, id: String) -> Result<()>;
+    async fn delete(&self, name: String) -> Result<()>;
 }
 
 /// Information about a container
 #[derive(Debug)]
 pub struct ServiceInfo {
     id: String,
-    subdomain: String,
+    domain: Option<String>,
     image: String,
     status: Status,
 }
@@ -90,7 +88,8 @@ pub enum Status {
 /// Options for creating a container
 #[derive(Debug, PartialEq)]
 pub struct CreateOpts {
-    subdomain: String,
+    name: String,
+    domain: Option<String>,
     environment: HashMap<String, String>,
     image: String,
 }
@@ -105,7 +104,8 @@ impl CreateOpts {
 /// The builder for container options
 #[derive(Debug, Default)]
 pub struct CreateOptsBuilder {
-    subdomain: String,
+    name: String,
+    domain: Option<String>,
     environment: HashMap<String, String>,
     image: String,
 }
@@ -116,9 +116,15 @@ impl CreateOptsBuilder {
         Default::default()
     }
 
-    /// Set the subdomain
-    pub fn subdomain<S: Into<String>>(mut self, name: S) -> Self {
-        self.subdomain = name.into();
+    /// Set the deployment name
+    pub fn name<S: Into<String>>(mut self, name: S) -> Self {
+        self.name = name.into();
+        self
+    }
+
+    /// Set the domain
+    pub fn domain<S: Into<String>>(mut self, domain: S) -> Self {
+        self.domain = Some(domain.into());
         self
     }
 
@@ -138,7 +144,8 @@ impl CreateOptsBuilder {
     /// Build the options
     pub fn build(self) -> CreateOpts {
         CreateOpts {
-            subdomain: self.subdomain,
+            name: self.name,
+            domain: self.domain,
             environment: self.environment,
             image: self.image,
         }
@@ -161,13 +168,15 @@ mod tests {
         map.insert("ANOTHER".into(), "VaLuE".into());
 
         let opts = CreateOpts {
-            subdomain: "hello.world".into(),
+            name: "hello-world".into(),
+            domain: Some("hello.world".into()),
             environment: map,
             image: "wafflehacks/testing:latest".into(),
         };
         let from_builder = CreateOpts::builder()
+            .name("hello-world")
             .image("wafflehacks/testing", "latest")
-            .subdomain("hello.world")
+            .domain("hello.world")
             .environment("another", "VaLuE")
             .environment(
                 "database_url",

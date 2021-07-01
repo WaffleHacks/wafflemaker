@@ -55,6 +55,7 @@ pub enum DeploymentEngine {
         connection: Connection,
         endpoint: String,
         timeout: u64,
+        state: PathBuf,
     },
 }
 
@@ -64,6 +65,7 @@ impl Default for DeploymentEngine {
             connection: Default::default(),
             endpoint: "unix:///var/run/docker.sock".into(),
             timeout: 10,
+            state: "./state".into(),
         }
     }
 }
@@ -132,10 +134,12 @@ mod tests {
             connection,
             endpoint,
             timeout,
+            state,
         } = &config.deployment.engine;
         assert_eq!(&Connection::Local, connection);
         assert_eq!("unix:///var/run/docker.sock", endpoint.as_str());
         assert_eq!(&120, timeout);
+        assert_eq!("./state", state.to_str().unwrap());
 
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
         assert_eq!("WaffleHacks/waffles", &config.git.repository);

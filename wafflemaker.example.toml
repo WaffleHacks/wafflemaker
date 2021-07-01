@@ -32,6 +32,9 @@
   # Expects a path for `local`, and a URL for `http` or `ssl`
   endpoint = "unix:///var/run/docker.sock"
 
+  # Where the server state should be stored
+  state = "./state"
+
   # How long to wait in seconds for a request to complete
   timeout = 120
 
