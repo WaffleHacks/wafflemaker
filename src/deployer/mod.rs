@@ -92,6 +92,7 @@ pub struct CreateOpts {
     domain: Option<String>,
     environment: HashMap<String, String>,
     image: String,
+    tag: String,
 }
 
 impl CreateOpts {
@@ -108,6 +109,7 @@ pub struct CreateOptsBuilder {
     domain: Option<String>,
     environment: HashMap<String, String>,
     image: String,
+    tag: String,
 }
 
 impl CreateOptsBuilder {
@@ -130,7 +132,8 @@ impl CreateOptsBuilder {
 
     /// Set the image to deploy
     pub fn image<S: Into<String>>(mut self, image: S, tag: S) -> Self {
-        self.image = format!("{}:{}", image.into(), tag.into());
+        self.image = image.into();
+        self.tag = tag.into();
         self
     }
 
@@ -148,6 +151,7 @@ impl CreateOptsBuilder {
             domain: self.domain,
             environment: self.environment,
             image: self.image,
+            tag: self.tag,
         }
     }
 }
@@ -171,7 +175,8 @@ mod tests {
             name: "hello-world".into(),
             domain: Some("hello.world".into()),
             environment: map,
-            image: "wafflehacks/testing:latest".into(),
+            image: "wafflehacks/testing".into(),
+            tag: "latest".into(),
         };
         let from_builder = CreateOpts::builder()
             .name("hello-world")

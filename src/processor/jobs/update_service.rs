@@ -1,8 +1,13 @@
 use super::Job;
-use crate::service::Service;
+use crate::{
+    deployer::{self, CreateOpts},
+    fail,
+    service::Service,
+};
 use async_trait::async_trait;
+use std::ffi::OsStr;
 use std::path::PathBuf;
-use tracing::instrument;
+use tracing::{info, instrument};
 
 #[derive(Debug)]
 pub struct UpdateService {
@@ -13,7 +18,14 @@ pub struct UpdateService {
 impl UpdateService {
     /// Create a new update service job
     pub fn new(config: Service, path: PathBuf) -> Self {
-        let name = path.to_str().unwrap().replace("/", ".");
+        let name = path
+            .with_extension("")
+            .iter()
+            .rev()
+            .map(OsStr::to_str)
+            .map(Option::unwrap)
+            .collect::<Vec<_>>()
+            .join("-");
         Self { config, name }
     }
 }
@@ -22,7 +34,34 @@ impl UpdateService {
 impl Job for UpdateService {
     #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
-        // TODO: begin deployment
+        let service = &self.config;
+
+        // Create the base container creation args
+        let mut options = CreateOpts::builder()
+            .name(&self.name)
+            .image(&service.docker.image, &service.docker.tag);
+
+        if service.web.enabled {
+            let subdomain = self.name.replace("-", ".");
+            let domain = match &service.web.base {
+                Some(base) => format!("{}.{}", subdomain, base),
+                // TODO: substitute default domain
+                None => format!("{}.wafflehacks.tech", subdomain),
+            };
+
+            options = options.domain(domain);
+        }
+
+        for (k, v) in service.environment.iter() {
+            options = options.environment(k.to_uppercase(), v);
+        }
+
+        // TODO: retrieve secrets
+
+        // Create and start the container
+        let id = fail!(deployer::instance().create(options.build()).await);
+        fail!(deployer::instance().start(self.name.clone()).await);
+        info!("deployed with id \"{}\"", id);
     }
 
     fn name<'a>(&self) -> &'a str {

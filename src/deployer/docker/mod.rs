@@ -3,9 +3,11 @@ use crate::config::Connection;
 use async_trait::async_trait;
 use bollard::{
     container::{Config as CreateContainerConfig, RemoveContainerOptions},
+    image::CreateImageOptions,
     models::ContainerStateStatusEnum,
     Docker as Bollard, API_DEFAULT_VERSION,
 };
+use futures::stream::StreamExt;
 use sled::{Config, Db, Mode};
 use std::{collections::HashMap, fs, path::Path};
 use tracing::{debug, error, info, instrument};
@@ -133,8 +135,13 @@ impl Deployer for Docker {
     }
 
     #[instrument(
-        skip(self),
-        fields(name = %options.name, web = %options.domain.is_some(), image = %options.image))
+        skip(self, options),
+        fields(
+            name = %options.name,
+            web = %options.domain.is_some(),
+            domain = ?options.domain,
+            image = %options.image),
+        )
     ]
     async fn create(&self, options: CreateOpts) -> Result<String> {
         let tree = self.state.open_tree(&options.name)?;
@@ -170,8 +177,29 @@ impl Deployer for Docker {
             options.domain.is_some().to_string(),
         );
 
+        // Pull the image
+        info!(
+            "pulling image \"{}:{}\" from Docker Hub",
+            &options.image, &options.tag
+        );
+        let mut stream = self.instance.create_image(
+            Some(CreateImageOptions {
+                from_image: options.image.clone(),
+                tag: options.tag.clone(),
+                ..Default::default()
+            }),
+            None,
+            None,
+        );
+        while let Some(info) = stream.next().await {
+            let info = info?;
+            if let Some(message) = info.status {
+                debug!("{}", message);
+            }
+        }
+
         let config = CreateContainerConfig {
-            image: Some(options.image),
+            image: Some(format!("{}:{}", &options.image, &options.tag)),
             env: Some(environment),
             attach_stderr: Some(true),
             attach_stdout: Some(true),
