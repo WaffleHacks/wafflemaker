@@ -1,6 +1,7 @@
 use super::Job;
+use crate::{deployer, fail};
 use async_trait::async_trait;
-use tracing::instrument;
+use tracing::{info, instrument};
 
 #[derive(Debug)]
 pub struct DeleteService {
@@ -18,7 +19,8 @@ impl DeleteService {
 impl Job for DeleteService {
     #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
-        // TODO: begin deletion
+        fail!(deployer::instance().delete(self.name.clone()).await);
+        info!("successfully deleted deployment")
     }
 
     fn name<'a>(&self) -> &'a str {
