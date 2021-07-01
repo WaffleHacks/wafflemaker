@@ -15,6 +15,14 @@
     # Automatically includes the base tag
     additional_tags = ["sha-*"]
 
+[web]
+  # Whether to enable web access (default: true)
+  enabled = true
+
+  # The base domain where the application can be accessed
+  # Defaults to the `deployment.domain` key in the configuration
+  base = "wafflehacks.tech"
+
 # What external services this depends on
 # Currently supports: PostgreSQL and Redis
 # Connection strings will be automatically injected into environment variables in the format: {service name}_URL

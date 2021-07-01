@@ -1,6 +1,6 @@
 use globset::Glob;
 use serde::Deserialize;
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{serde_as, DisplayFromStr, NoneAsEmptyString};
 use std::{collections::HashMap, path::Path};
 use tokio::fs;
 
@@ -18,6 +18,8 @@ pub struct Service {
     pub environment: HashMap<String, String>,
     #[serde(default)]
     pub secrets: HashMap<String, Secret>,
+    #[serde(default)]
+    pub web: Web,
 }
 
 impl Service {
@@ -46,7 +48,6 @@ pub enum Dependency {
 }
 
 /// The docker image configuration
-#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct Docker {
     pub image: String,
@@ -61,7 +62,7 @@ pub struct AutoUpdate {
     #[serde(default)]
     #[serde_as(as = "Vec<DisplayFromStr>")]
     pub additional_tags: Vec<Glob>,
-    #[serde(default = "automatic_default")]
+    #[serde(default = "default_true")]
     pub automatic: bool,
 }
 
@@ -74,7 +75,26 @@ impl Default for AutoUpdate {
     }
 }
 
-fn automatic_default() -> bool {
+#[serde_as]
+#[derive(Debug, Deserialize)]
+pub struct Web {
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default)]
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub base: Option<String>,
+}
+
+impl Default for Web {
+    fn default() -> Web {
+        Web {
+            enabled: true,
+            base: None,
+        }
+    }
+}
+
+fn default_true() -> bool {
     true
 }
 
@@ -99,6 +119,8 @@ mod tests {
         assert_eq!(service.docker.update.additional_tags.len(), 1);
         assert_eq!(service.environment.len(), 4);
         assert_eq!(service.secrets.len(), 5);
+        assert_eq!(service.web.enabled, true);
+        assert_eq!(service.web.base, Some("wafflehacks.tech".into()));
     }
 
     #[tokio::test]
@@ -115,5 +137,7 @@ mod tests {
         assert_eq!(service.docker.update.additional_tags.len(), 0);
         assert_eq!(service.environment.len(), 0);
         assert_eq!(service.secrets.len(), 0);
+        assert_eq!(service.web.enabled, true);
+        assert_eq!(service.web.base, None);
     }
 }
