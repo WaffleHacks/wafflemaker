@@ -5,8 +5,6 @@ use crate::{
     service::Service,
 };
 use async_trait::async_trait;
-use std::ffi::OsStr;
-use std::path::PathBuf;
 use tracing::{info, instrument};
 
 #[derive(Debug)]
@@ -17,15 +15,7 @@ pub struct UpdateService {
 
 impl UpdateService {
     /// Create a new update service job
-    pub fn new(config: Service, path: PathBuf) -> Self {
-        let name = path
-            .with_extension("")
-            .iter()
-            .rev()
-            .map(OsStr::to_str)
-            .map(Option::unwrap)
-            .collect::<Vec<_>>()
-            .join("-");
+    pub fn new(config: Service, name: String) -> Self {
         Self { config, name }
     }
 }

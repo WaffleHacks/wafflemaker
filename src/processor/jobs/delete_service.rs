@@ -1,6 +1,5 @@
 use super::Job;
 use async_trait::async_trait;
-use std::path::PathBuf;
 use tracing::instrument;
 
 #[derive(Debug)]
@@ -10,8 +9,7 @@ pub struct DeleteService {
 
 impl DeleteService {
     /// Create a new delete service job
-    pub fn new(path: PathBuf) -> Self {
-        let name = path.to_str().unwrap().replace("/", ".");
+    pub fn new(name: String) -> Self {
         Self { name }
     }
 }

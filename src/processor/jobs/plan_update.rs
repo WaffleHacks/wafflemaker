@@ -5,7 +5,10 @@ use crate::{
     service::Service,
 };
 use async_trait::async_trait;
-use std::path::PathBuf;
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 use tracing::{error, info, instrument, warn};
 
 #[derive(Debug)]
@@ -57,6 +60,8 @@ impl Job for PlanUpdate {
                 continue;
             }
 
+            let name = path_to_deployment_name(diff.path.as_path());
+
             match diff.action {
                 Action::Modified => {
                     // Parse the configuration
@@ -73,13 +78,13 @@ impl Job for PlanUpdate {
                     };
 
                     // Spawn update job
-                    info!(path = %diff.path.display(), "updating service");
-                    super::dispatch(UpdateService::new(config, diff.path));
+                    info!(path = %diff.path.display(), name = %name, "updating service");
+                    super::dispatch(UpdateService::new(config, name));
                 }
                 Action::Deleted => {
                     // Spawn delete job
-                    info!(path = %diff.path.display(), "deleting service");
-                    super::dispatch(DeleteService::new(diff.path));
+                    info!(path = %diff.path.display(), name = %name, "deleting service");
+                    super::dispatch(DeleteService::new(name));
                 }
                 _ => unreachable!(),
             }
@@ -89,4 +94,15 @@ impl Job for PlanUpdate {
     fn name<'a>(&self) -> &'a str {
         "plan_update"
     }
+}
+
+/// Convert the path to the file to the deployment name
+fn path_to_deployment_name(path: &Path) -> String {
+    path.with_extension("")
+        .iter()
+        .rev()
+        .map(OsStr::to_str)
+        .map(Option::unwrap)
+        .collect::<Vec<_>>()
+        .join("-")
 }
