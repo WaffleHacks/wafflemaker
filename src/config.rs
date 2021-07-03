@@ -1,8 +1,7 @@
 use anyhow::Result;
-use cloudflare::framework::auth::Credentials as CloudflareCredentials;
 use serde::Deserialize;
 use std::{
-    net::{Ipv4Addr, Ipv6Addr, SocketAddr},
+    net::SocketAddr,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -20,7 +19,6 @@ pub type SharedConfig = Arc<Config>;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub deployment: Deployment,
-    pub dns: Dns,
     pub git: Git,
     pub server: Server,
     pub webhooks: Webhooks,
@@ -113,48 +111,9 @@ pub struct Webhooks {
     pub github: String,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Dns {
-    pub zones: Vec<String>,
-    pub credentials: Credentials,
-    pub addresses: Addresses,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Addresses {
-    pub v4: Ipv4Addr,
-    #[serde(default)]
-    pub v6: Option<Ipv6Addr>,
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-#[serde(tag = "type", rename_all = "kebab-case")]
-pub enum Credentials {
-    UserKey { email: String, key: String },
-    UserToken { token: String },
-    Service { key: String },
-}
-
-impl Credentials {
-    pub fn to_cloudflare(&self) -> CloudflareCredentials {
-        match self {
-            Self::Service { key } => CloudflareCredentials::Service {
-                key: key.to_owned(),
-            },
-            Self::UserKey { email, key } => CloudflareCredentials::UserAuthKey {
-                email: email.to_owned(),
-                key: key.to_owned(),
-            },
-            Self::UserToken { token } => CloudflareCredentials::UserAuthToken {
-                token: token.to_owned(),
-            },
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{parse, Connection, Credentials, DeploymentEngine};
+    use super::{parse, Connection, DeploymentEngine};
 
     #[tokio::test]
     async fn parse_config() {
@@ -181,16 +140,6 @@ mod tests {
         assert_eq!("unix:///var/run/docker.sock", endpoint.as_str());
         assert_eq!(&120, timeout);
         assert_eq!("./state", state.to_str().unwrap());
-
-        assert_eq!(vec!["wafflehacks.tech"], config.dns.zones);
-        assert_eq!("127.0.0.1", config.dns.addresses.v4.to_string());
-        assert_eq!(None, config.dns.addresses.v6);
-        assert_eq!(
-            Credentials::UserToken {
-                token: "ABCd-eFGHijKlmNoPQrsTUVWxyz0123456789-ab".into()
-            },
-            config.dns.credentials
-        );
 
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
         assert_eq!("WaffleHacks/waffles", &config.git.repository);

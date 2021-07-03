@@ -1,5 +1,5 @@
 use super::Job;
-use crate::{deployer, dns, fail};
+use crate::{deployer, fail};
 use async_trait::async_trait;
 use tracing::{debug, info, instrument};
 
@@ -19,9 +19,6 @@ impl DeleteService {
 impl Job for DeleteService {
     #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
-        fail!(dns::instance().delete(&self.name).await);
-        info!("deleted DNS records (if they existed)");
-
         if let Err(_) = deployer::instance().stop(self.name.clone()).await {
             debug!("deployment already stopped");
         }

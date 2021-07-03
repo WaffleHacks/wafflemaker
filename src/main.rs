@@ -13,7 +13,6 @@ use args::Args;
 mod args;
 mod config;
 mod deployer;
-mod dns;
 mod git;
 mod http;
 mod processor;
@@ -48,9 +47,6 @@ async fn main() -> Result<()> {
 
     // Connect to the repository service
     let repository_handle = git::initialize(&configuration.git.clone_to);
-
-    // Connect to the DNS service
-    dns::initialize(&configuration.dns).await?;
 
     // Connect to the deployment service
     deployer::initialize(&configuration.deployment).await?;
