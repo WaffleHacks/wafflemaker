@@ -1,7 +1,7 @@
 use super::Job;
 use crate::{
     deployer::{self, CreateOpts},
-    fail,
+    dns, fail,
     service::Service,
 };
 use async_trait::async_trait;
@@ -31,7 +31,7 @@ impl Job for UpdateService {
             .name(&self.name)
             .image(&service.docker.image, &service.docker.tag);
 
-        if service.web.enabled {
+        let domain = if service.web.enabled {
             let subdomain = self.name.replace("-", ".");
             let domain = match &service.web.base {
                 Some(base) => format!("{}.{}", subdomain, base),
@@ -39,8 +39,12 @@ impl Job for UpdateService {
                 None => format!("{}.wafflehacks.tech", subdomain),
             };
 
-            options = options.domain(domain);
-        }
+            options = options.domain(&domain);
+
+            Some(domain)
+        } else {
+            None
+        };
 
         for (k, v) in service.environment.iter() {
             options = options.environment(k.to_uppercase(), v);
@@ -52,6 +56,12 @@ impl Job for UpdateService {
         let id = fail!(deployer::instance().create(options.build()).await);
         fail!(deployer::instance().start(self.name.clone()).await);
         info!("deployed with id \"{}\"", id);
+
+        // Update the DNS record
+        if let Some(d) = domain {
+            fail!(dns::instance().create(d).await);
+            info!("created DNS record");
+        }
     }
 
     fn name<'a>(&self) -> &'a str {

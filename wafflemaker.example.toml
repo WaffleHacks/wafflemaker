@@ -50,6 +50,38 @@
   # The certificate key to use
   #key = "./key.pem"
 
+# Configuration for updating DNS records
+[dns]
+  # The Cloudflare zones that wafflemaker can modify
+  zones = ["wafflehacks.tech"]
+
+  # The public IP v4 and v6 addresses that the server can be accessed from
+  [dns.addresses]
+    # The public IPv4 address
+    v4 = "127.0.0.1"
+
+    # The public IPv6 address if the server supports it
+    # v6 = "::1"
+
+  # The credentials to authenticate with the Cloudflare API
+  [dns.credentials]
+    # The type of credentials to use
+    # Options: user-key, user-token, service
+    # See https://api.cloudflare.com/#getting-started-requests the differences
+    type = "user-token"
+
+    # The API token to authenticate with
+    # Only used with `user-token`
+    token = "ABCd-eFGHijKlmNoPQrsTUVWxyz0123456789-ab"
+
+    # The email and corresponding API key to authenticate with
+    # Only used with `user-key`
+    # email = "example@example.com"
+    # key = "1234567893feefc5f0q5000bfo0c3deadbeef"
+
+    # The service token to authenticate with
+    # key = "v1.0-e24fd090c02efcfecb4de8f4ff246fd5c75..."
+
 # Configuration for the services repository
 [git]
   # Where to clone the configuration repository to

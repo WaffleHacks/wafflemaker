@@ -1,5 +1,5 @@
 use super::Job;
-use crate::{deployer, fail};
+use crate::{deployer, dns, fail};
 use async_trait::async_trait;
 use tracing::{info, instrument};
 
@@ -19,8 +19,11 @@ impl DeleteService {
 impl Job for DeleteService {
     #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
+        fail!(dns::instance().delete(&self.name).await);
+        info!("deleted DNS records (if they existed)");
+
         fail!(deployer::instance().delete(self.name.clone()).await);
-        info!("successfully deleted deployment")
+        info!("successfully deleted deployment");
     }
 
     fn name<'a>(&self) -> &'a str {
