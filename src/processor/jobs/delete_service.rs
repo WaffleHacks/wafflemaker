@@ -22,6 +22,7 @@ impl Job for DeleteService {
         fail!(dns::instance().delete(&self.name).await);
         info!("deleted DNS records (if they existed)");
 
+        fail!(deployer::instance().stop(self.name.clone()).await);
         fail!(deployer::instance().delete(self.name.clone()).await);
         info!("successfully deleted deployment");
     }
