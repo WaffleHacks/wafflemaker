@@ -1,7 +1,7 @@
 use super::Job;
 use crate::{deployer, dns, fail};
 use async_trait::async_trait;
-use tracing::{info, instrument};
+use tracing::{debug, info, instrument};
 
 #[derive(Debug)]
 pub struct DeleteService {
@@ -22,7 +22,10 @@ impl Job for DeleteService {
         fail!(dns::instance().delete(&self.name).await);
         info!("deleted DNS records (if they existed)");
 
-        fail!(deployer::instance().stop(self.name.clone()).await);
+        if let Err(_) = deployer::instance().stop(self.name.clone()).await {
+            debug!("deployment already stopped");
+        }
+
         fail!(deployer::instance().delete(self.name.clone()).await);
         info!("successfully deleted deployment");
     }

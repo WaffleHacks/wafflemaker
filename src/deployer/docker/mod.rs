@@ -112,7 +112,7 @@ impl Docker {
                 id,
                 Some(RemoveContainerOptions {
                     v: true,
-                    link: true,
+                    link: false,
                     force: false,
                 }),
             )
@@ -169,7 +169,10 @@ impl Deployer for Docker {
 
         // Delete any old containers if they exist
         if let Some(id) = Self::get_string(&tree, "id")? {
-            self.stop_by_id(&id).await?;
+            info!("deployment already exists, removing old version");
+            if let Err(_) = self.stop_by_id(&id).await {
+                debug!("deployment already stopped");
+            }
             self.delete_by_id(&id).await?;
         }
 
