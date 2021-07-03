@@ -166,9 +166,6 @@ impl Deployer for Docker {
                 format!("traefik.http.routers.{}.tls.certresolver", router_name),
                 "letsencrypt".to_string(),
             );
-
-            // Store the domain being used
-            tree.insert("domain", domain.as_str())?;
         }
 
         // Enable traefik if a domain is added
