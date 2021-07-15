@@ -2,8 +2,10 @@ use anyhow::Result;
 use serde::Deserialize;
 use std::{
     net::SocketAddr,
+    num::ParseIntError,
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 use tokio::fs;
 
@@ -109,7 +111,26 @@ pub struct Git {
 #[derive(Debug, Deserialize)]
 pub struct Secrets {
     pub address: String,
+    period: String,
     pub token: String,
+}
+
+impl Secrets {
+    /// Get the period in which the token should be renewed
+    pub fn period(&self) -> Result<Duration, ParseIntError> {
+        let raw = self.period.to_lowercase();
+        let seconds = if let Some(time) = raw.strip_suffix("h") {
+            time.parse::<u64>()? * 60 * 60
+        } else if let Some(time) = raw.strip_suffix("m") {
+            time.parse::<u64>()? * 60
+        } else if let Some(time) = raw.strip_suffix("s") {
+            time.parse::<u64>()?
+        } else {
+            raw.parse::<u64>()?
+        };
+
+        Ok(Duration::new(seconds, 0))
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -121,6 +142,7 @@ pub struct Webhooks {
 #[cfg(test)]
 mod tests {
     use super::{parse, Connection, DeploymentEngine};
+    use std::time::Duration;
 
     #[tokio::test]
     async fn parse_config() {
@@ -153,6 +175,10 @@ mod tests {
 
         assert_eq!("http://127.0.0.1:8200", config.secrets.address);
         assert_eq!("s.some-token", config.secrets.token);
+        assert_eq!(
+            Duration::new(60 * 60 * 24, 0),
+            config.secrets.period().unwrap()
+        );
 
         assert_eq!("please-change:this-token", &config.webhooks.docker);
         assert_eq!("please-change-this-secret", &config.webhooks.github);

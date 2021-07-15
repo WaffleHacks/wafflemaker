@@ -1,4 +1,5 @@
 use reqwest::{header::InvalidHeaderValue, Error as ReqwestError};
+use std::num::ParseIntError;
 use thiserror::Error as ThisError;
 use url::ParseError;
 
@@ -7,8 +8,8 @@ pub(crate) type Result<T> = std::result::Result<T, Error>;
 /// The possible errors raised by Vault
 #[derive(Debug, ThisError)]
 pub enum Error {
-    #[error("check your token and URL are correct")]
-    Config,
+    #[error("check your secrets configuration is correct")]
+    Config(#[source] ConfigSource),
     #[error("failed to parse response body")]
     Deserialize(#[source] ReqwestError),
     #[error("token has incorrect permissions")]
@@ -23,16 +24,29 @@ pub enum Error {
     Unknown(#[source] ReqwestError),
 }
 
+/// A wrapper around configuration errors
+#[derive(Debug, ThisError)]
+pub enum ConfigSource {
+    #[error("failed to build client")]
+    Client(#[from] ReqwestError),
+    #[error("invalid duration format")]
+    Duration(#[from] ParseIntError),
+    #[error("invalid token format")]
+    Token(#[from] InvalidHeaderValue),
+    #[error("invalid Vault address")]
+    Url(#[from] ParseError),
+}
+
 impl From<InvalidHeaderValue> for Error {
-    fn from(_: InvalidHeaderValue) -> Error {
-        Error::Config
+    fn from(error: InvalidHeaderValue) -> Error {
+        Error::Config(error.into())
     }
 }
 
 impl From<ReqwestError> for Error {
     fn from(error: ReqwestError) -> Error {
         if error.is_builder() {
-            Error::Config
+            Error::Config(error.into())
         } else if error.is_timeout() {
             Error::Timeout(error)
         } else if error.is_status() {
@@ -51,7 +65,13 @@ impl From<ReqwestError> for Error {
 }
 
 impl From<ParseError> for Error {
-    fn from(_: ParseError) -> Error {
-        Error::Config
+    fn from(error: ParseError) -> Error {
+        Error::Config(error.into())
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(error: ParseIntError) -> Error {
+        Error::Config(error.into())
     }
 }

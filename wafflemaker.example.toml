@@ -74,7 +74,17 @@
   #   - create, delete, update on database/static-roles/+ for a database named "postgresql"
   #   - read on database/static-creds/+
   #   - read on aws/creds/+
+  # The token should not have a max TTL and be able to renew itself
   token = "s.some-token"
+
+  # How often to extend the token's lifetime. This should be slightly shorter than the token's
+  # max TTL.
+  # Supported suffixes are:
+  #   - hour: h
+  #   - minute: m
+  #   - second: s
+  # Defaults to minutes (m) if not specified or a valid prefix is not found.
+  period = "24h"
 
 # Configuration for incoming webhooks
 [webhooks]

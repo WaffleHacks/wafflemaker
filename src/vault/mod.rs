@@ -103,12 +103,15 @@ pub async fn initialize(config: &Secrets, stop: Receiver<()>) -> Result<()> {
         ))
         .build()?;
 
-    let url = Url::parse(&config.address)?;
+    let renewal_period = config.period()?;
 
-    let vault = Vault { client, url };
+    let vault = Vault {
+        client,
+        url: Url::parse(&config.address)?,
+    };
     vault.check_perms().await?;
 
-    tokio::task::spawn(renewer(stop));
+    tokio::task::spawn(renewer(renewal_period, stop));
 
     STATIC_INSTANCE.swap(Arc::from(vault));
     Ok(())
@@ -121,8 +124,8 @@ pub fn instance() -> Arc<Vault> {
 
 /// Automatically renew the token every 24hr
 #[instrument]
-async fn renewer(mut stop: Receiver<()>) {
-    let mut interval = time::interval(Duration::from_secs(60 * 60 * 24));
+async fn renewer(period: Duration, mut stop: Receiver<()>) {
+    let mut interval = time::interval(period);
 
     loop {
         select! {
