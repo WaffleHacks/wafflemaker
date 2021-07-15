@@ -65,7 +65,7 @@ impl Repository {
 
 impl Default for Repository {
     fn default() -> Repository {
-        let (channel, _) = service::spawn("./configuration");
+        let (channel, _) = mpsc::sync_channel(1);
         Repository(channel)
     }
 }

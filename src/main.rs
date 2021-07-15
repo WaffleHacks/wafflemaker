@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
     vault::initialize(&configuration.secrets, stop_rx).await?;
 
     // Start the job processor
-    let stop_job_processor = processor::spawn(configuration.clone());
+    processor::spawn(configuration.clone(), stop_tx.clone());
 
     // Setup the routes
     let routes = http::routes(configuration)
@@ -83,11 +83,8 @@ async fn main() -> Result<()> {
         .context("failed to listen for event")?;
     info!("signal received, shutting down...");
 
-    // Shutdown the server
+    // Shutdown the services
     stop_tx.send(()).unwrap();
-
-    // Shutdown the job processor
-    stop_job_processor.send(true).unwrap();
 
     // Shutdown the repository service
     git::instance().shutdown();
