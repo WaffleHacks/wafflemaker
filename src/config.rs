@@ -21,6 +21,7 @@ pub struct Config {
     pub agent: Agent,
     pub deployment: Deployment,
     pub git: Git,
+    pub secrets: Secrets,
     pub webhooks: Webhooks,
 }
 
@@ -106,6 +107,12 @@ pub struct Git {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Secrets {
+    pub address: String,
+    pub token: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Webhooks {
     pub docker: String,
     pub github: String,
@@ -143,6 +150,9 @@ mod tests {
 
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
         assert_eq!("WaffleHacks/waffles", &config.git.repository);
+
+        assert_eq!("http://127.0.0.1:8200", config.secrets.address);
+        assert_eq!("s.some-token", config.secrets.token);
 
         assert_eq!("please-change:this-token", &config.webhooks.docker);
         assert_eq!("please-change-this-secret", &config.webhooks.github);

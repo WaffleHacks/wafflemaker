@@ -59,6 +59,23 @@
   # The repository to pull configuration from
   repository = "WaffleHacks/waffles"
 
+# Configuration for the Hashicorp Vault instance. WaffleMaker assumes
+# that the following services are enabled and properly configured on
+# the following paths:
+#   - kv v2 on /services
+#   - database on /database with a postgresql database configured named "postgresql"
+#   - aws on /aws
+[secrets]
+  # The address where Vault can be accessed
+  address = "http://127.0.0.1:8200"
+
+  # A Vault token that has the following permissions:
+  #   - create, read, update on services/data/+
+  #   - create, delete, update on database/static-roles/+ for a database named "postgresql"
+  #   - read on database/static-creds/+
+  #   - read on aws/creds/+
+  token = "s.some-token"
+
 # Configuration for incoming webhooks
 [webhooks]
   # DockerHub is used for notifying of updated images.

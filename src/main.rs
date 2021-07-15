@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use structopt::StructOpt;
-use tokio::{fs, signal, sync::oneshot, task};
+use tokio::{fs, signal, sync::broadcast, task};
 use tracing::{info, Span};
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{
@@ -17,6 +17,7 @@ mod git;
 mod http;
 mod processor;
 mod service;
+mod vault;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -45,11 +46,16 @@ async fn main() -> Result<()> {
         .with_span_events(FmtSpan::CLOSE)
         .init();
 
+    let (stop_tx, stop_rx) = broadcast::channel(1);
+
     // Connect to the repository service
     let repository_handle = git::initialize(&configuration.git.clone_to);
 
     // Connect to the deployment service
     deployer::initialize(&configuration.deployment).await?;
+
+    // Connect to Vault (secrets service)
+    vault::initialize(&configuration.secrets, stop_rx).await?;
 
     // Start the job processor
     let stop_job_processor = processor::spawn(configuration.clone());
@@ -60,10 +66,10 @@ async fn main() -> Result<()> {
         .with(trace_request());
 
     // Bind the server
-    let (stop_tx, stop_rx) = oneshot::channel();
+    let mut stop_rx = stop_tx.subscribe();
     let (addr, server) = warp::serve(routes)
-        .try_bind_with_graceful_shutdown(address, async {
-            stop_rx.await.ok();
+        .try_bind_with_graceful_shutdown(address, async move {
+            stop_rx.recv().await.ok();
         })
         .with_context(|| format!("failed to bind to {}", address))?;
 
