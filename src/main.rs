@@ -27,10 +27,10 @@ async fn main() -> Result<()> {
     let configuration = config::parse(cli.config)
         .await
         .context("Failed to load configuration")?;
-    let address = cli.address.unwrap_or(configuration.server.address);
+    let address = cli.address.unwrap_or(configuration.agent.address);
     let log_filter = cli
         .log_level
-        .unwrap_or_else(|| configuration.server.log.clone());
+        .unwrap_or_else(|| configuration.agent.log.clone());
 
     // Ensure the clone directory exists
     if !configuration.git.clone_to.exists() {

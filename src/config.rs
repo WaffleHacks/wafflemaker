@@ -18,14 +18,14 @@ pub type SharedConfig = Arc<Config>;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    pub agent: Agent,
     pub deployment: Deployment,
     pub git: Git,
-    pub server: Server,
     pub webhooks: Webhooks,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Server {
+pub struct Agent {
     pub address: SocketAddr,
     pub log: String,
     pub workers: u32,
@@ -121,9 +121,9 @@ mod tests {
             .await
             .expect("failed to parse configuration");
 
-        assert_eq!("127.0.0.1:8000", &config.server.address.to_string());
-        assert_eq!("info", &config.server.log);
-        assert_eq!(2, config.server.workers);
+        assert_eq!("127.0.0.1:8000", &config.agent.address.to_string());
+        assert_eq!("info", &config.agent.log);
+        assert_eq!(2, config.agent.workers);
 
         assert_eq!("wafflehacks.tech", &config.deployment.domain);
         assert!(matches!(

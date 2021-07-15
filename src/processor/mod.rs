@@ -10,10 +10,10 @@ pub fn spawn(config: SharedConfig) -> watch::Sender<bool> {
     // Register handler to stop processing
     let (tx, rx) = watch::channel(false);
 
-    info!(count = config.server.workers, "spawning job workers");
+    info!(count = config.agent.workers, "spawning job workers");
 
     // Spawn the workers
-    for id in 0..config.server.workers {
+    for id in 0..config.agent.workers {
         tokio::spawn(worker::worker(id, rx.clone()));
     }
 

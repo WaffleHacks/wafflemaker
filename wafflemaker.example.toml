@@ -1,6 +1,6 @@
-# The base server configuration
-[server]
-  # The port and address where server should listen to receive webhooks
+# The base agent configuration
+[agent]
+  # The port and address where the agent should listen to receive webhooks
   address = "127.0.0.1:8000"
 
   # The logging specification in the RUST_LOG format, can be overridden
