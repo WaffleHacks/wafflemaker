@@ -15,6 +15,12 @@ macro_rules! set {
     }};
 }
 
+/// The base response for all API requests
+#[derive(Debug, Deserialize)]
+pub struct BaseResponse<T> {
+    pub data: T,
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Permission {
@@ -53,4 +59,9 @@ impl<'paths> Capabilities<'paths> {
             paths: Self::mapping().keys().map(|s| *s).collect(),
         }
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Secret {
+    pub data: HashMap<String, String>,
 }

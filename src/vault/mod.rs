@@ -3,9 +3,12 @@ use arc_swap::ArcSwap;
 use once_cell::sync::Lazy;
 use reqwest::{
     header::{HeaderMap, HeaderValue},
-    Client,
+    Client, StatusCode,
 };
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 use tokio::{
     select,
     sync::broadcast::Receiver,
@@ -76,6 +79,37 @@ impl Vault {
             .await?
             .error_for_status()?;
 
+        Ok(())
+    }
+
+    /// Fetch all the static secrets for a service by name if they exist
+    #[instrument(skip(self))]
+    pub async fn fetch_static(&self, name: &str) -> Result<Option<HashMap<String, String>>> {
+        let response = self
+            .client
+            .get(format!("{}v1/services/data/{}", self.url, name))
+            .send()
+            .await?;
+        if response.status() == StatusCode::NOT_FOUND {
+            info!("new secrets to be created");
+            return Ok(None);
+        }
+
+        let content: BaseResponse<Secret> = response.error_for_status()?.json().await?;
+        info!("found existing secrets");
+        Ok(Some(content.data.data))
+    }
+
+    /// Save the static secrets for a service
+    #[instrument(skip(self, secrets))]
+    pub async fn put_static(&self, name: &str, secrets: HashMap<String, String>) -> Result<()> {
+        self.client
+            .post(format!("{}v1/services/data/{}", self.url, name))
+            .json(&Secret { data: secrets })
+            .send()
+            .await?
+            .error_for_status()?;
+        info!("added secrets for service");
         Ok(())
     }
 }
