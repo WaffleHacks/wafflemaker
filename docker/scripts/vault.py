@@ -53,7 +53,7 @@ send_request(
 )
 
 print("Initializing services KV engine...")
-send_request("POST", "/v1/sys/mounts/services", {"type": "kv", "version": "2"}, "Failed to initialize services KV engine")
+send_request("POST", "/v1/sys/mounts/services", {"type": "kv", "options": {"version": "2"}}, "Failed to initialize services KV engine")
 
 print("Creating `wafflemaker` role...")
 role = open("./wafflemaker.hcl", "r")
