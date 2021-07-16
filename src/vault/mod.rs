@@ -112,6 +112,20 @@ impl Vault {
         info!("added secrets for service");
         Ok(())
     }
+
+    /// Fetch AWS credentials using the given role
+    #[instrument(skip(self))]
+    pub async fn aws_credentials(&self, role: &str) -> Result<AWS> {
+        let response: BaseResponse<AWS> = self
+            .client
+            .get(format!("{}v1/aws/creds/{}", self.url, role))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(response.data)
+    }
 }
 
 impl Default for Vault {

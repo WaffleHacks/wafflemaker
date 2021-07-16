@@ -65,3 +65,9 @@ impl<'paths> Capabilities<'paths> {
 pub struct Secret {
     pub data: HashMap<String, String>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct AWS {
+    pub access_key: String,
+    pub secret_key: String,
+}
