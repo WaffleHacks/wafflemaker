@@ -1,9 +1,10 @@
 use globset::Glob;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr, NoneAsEmptyString};
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, ffi::OsStr, path::Path};
 use tokio::fs;
 
+pub mod registry;
 mod secret;
 
 pub use secret::{Format, Part as AWSPart, Secret};
@@ -27,6 +28,17 @@ impl Service {
     pub async fn parse<P: AsRef<Path>>(path: P) -> anyhow::Result<Service> {
         let raw = fs::read(path).await?;
         Ok(toml::from_slice(&raw)?)
+    }
+
+    /// Generate the name of a service from its file path
+    pub fn name(path: &Path) -> String {
+        path.with_extension("")
+            .iter()
+            .rev()
+            .map(OsStr::to_str)
+            .map(Option::unwrap)
+            .collect::<Vec<_>>()
+            .join("-")
     }
 }
 

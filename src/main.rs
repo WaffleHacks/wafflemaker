@@ -19,6 +19,8 @@ mod processor;
 mod service;
 mod vault;
 
+use service::registry;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Parse the cli
@@ -48,6 +50,9 @@ async fn main() -> Result<()> {
         .init();
 
     let (stop_tx, stop_rx) = broadcast::channel(1);
+
+    // Initialize the service registry
+    registry::init().await?;
 
     // Connect to the repository service
     let repository_handle = git::initialize(&configuration.git.clone_to);

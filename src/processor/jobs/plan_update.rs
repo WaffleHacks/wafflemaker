@@ -5,10 +5,7 @@ use crate::{
     service::Service,
 };
 use async_trait::async_trait;
-use std::{
-    ffi::OsStr,
-    path::{Path, PathBuf},
-};
+use std::path::PathBuf;
 use tracing::{error, info, instrument, warn};
 
 #[derive(Debug)]
@@ -60,7 +57,7 @@ impl Job for PlanUpdate {
                 continue;
             }
 
-            let name = path_to_deployment_name(diff.path.as_path());
+            let name = Service::name(diff.path.as_path());
 
             match diff.action {
                 Action::Modified => {
@@ -94,15 +91,4 @@ impl Job for PlanUpdate {
     fn name<'a>(&self) -> &'a str {
         "plan_update"
     }
-}
-
-/// Convert the path to the file to the deployment name
-fn path_to_deployment_name(path: &Path) -> String {
-    path.with_extension("")
-        .iter()
-        .rev()
-        .map(OsStr::to_str)
-        .map(Option::unwrap)
-        .collect::<Vec<_>>()
-        .join("-")
 }
