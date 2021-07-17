@@ -65,11 +65,21 @@
   [secrets.block]
     type = "load"
 
-  [secrets.aws]
+  [secrets.aws_access_key_id]
     type = "aws"
     # The role to generate the credentials from
     # It must already exist in Vault
     role = "my-role"
+    # The part of the key pair to store in the environment variable
+    # Options: `access`, `secret`
+    part = "access"
+
+  # Stores the secret access key part of the pair
+  # There should be one variable per part, however no validation is done to ensure this happens
+  [secrets.aws_secret_access_key]
+    type = "aws"
+    role = "my-role"
+    part = "secret"
 
   [secrets.generated]
     type = "generate"

@@ -13,11 +13,20 @@ pub enum Format {
     Hex,
 }
 
+/// Which part of the pair to store in the variable
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum Part {
+    Access,
+    Secret,
+}
+
 /// The possible secret types that can be retrieved/generated.
 #[derive(Debug, PartialEq)]
 pub enum Secret {
     AWS {
         role: String,
+        part: Part,
     },
     Generate {
         format: Format,
@@ -30,7 +39,7 @@ pub enum Secret {
 impl From<AuxiliarySecret> for Secret {
     fn from(aux: AuxiliarySecret) -> Secret {
         match aux {
-            AuxiliarySecret::AWS { role } => Secret::AWS { role },
+            AuxiliarySecret::AWS { role, part } => Secret::AWS { role, part },
             AuxiliarySecret::Generate {
                 format,
                 length,
@@ -52,6 +61,7 @@ impl From<AuxiliarySecret> for Secret {
 enum AuxiliarySecret {
     AWS {
         role: String,
+        part: Part,
     },
     Generate {
         format: Format,

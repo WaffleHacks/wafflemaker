@@ -118,7 +118,7 @@ mod tests {
         assert_eq!(service.docker.update.automatic, true);
         assert_eq!(service.docker.update.additional_tags.len(), 1);
         assert_eq!(service.environment.len(), 4);
-        assert_eq!(service.secrets.len(), 5);
+        assert_eq!(service.secrets.len(), 6);
         assert_eq!(service.web.enabled, true);
         assert_eq!(service.web.base, Some("wafflehacks.tech".into()));
     }
