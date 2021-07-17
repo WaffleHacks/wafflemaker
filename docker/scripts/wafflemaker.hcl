@@ -8,7 +8,10 @@ path "services/data/+" {
 path "database/static-roles/+" {
   capabilities = ["list", "create", "delete"]
   allowed_parameters = {
-    "db_name" = ["postgresql"]
+    "db_name" = ["postgresql"],
+    "rotation_statements" = []
+    "username" = []
+    "rotation_period" = []
   }
 }
 
