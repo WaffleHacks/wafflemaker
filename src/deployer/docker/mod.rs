@@ -1,15 +1,14 @@
-use super::{CreateOpts, Deployer, Result, ServiceInfo, Status};
+use super::{CreateOpts, Deployer, Result};
 use crate::config::Connection;
 use async_trait::async_trait;
 use bollard::{
     container::{Config as CreateContainerConfig, RemoveContainerOptions},
     image::CreateImageOptions,
-    models::ContainerStateStatusEnum,
     Docker as Bollard, API_DEFAULT_VERSION,
 };
 use futures::stream::StreamExt;
 use sled::{Config, Db, Mode};
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::HashMap, fs, path::Path, result::Result as StdResult};
 use tracing::{debug, error, info, instrument};
 
 #[derive(Debug)]
@@ -87,16 +86,7 @@ impl Docker {
     /// Convert a deployment name to a docker id
     fn id_from_name<S: AsRef<str>>(&self, name: S) -> Result<String> {
         let tree = self.state.open_tree(name.as_ref())?;
-        Self::get_string(&tree, "id").transpose().unwrap()
-    }
-
-    /// Retrieve a string from a given key
-    fn get_string<K: AsRef<[u8]>>(tree: &sled::Tree, key: K) -> Result<Option<String>> {
-        Ok(tree
-            .get(key)?
-            .map(|v| v.to_vec())
-            .map(String::from_utf8)
-            .transpose()?)
+        get_string(&tree, "id").transpose().unwrap()
     }
 
     /// Stop a container by its ID
@@ -133,26 +123,15 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn list(&self) -> Result<Vec<ServiceInfo>> {
-        let mut deployments = Vec::new();
-        for name in self.state.tree_names() {
-            let tree = self.state.open_tree(name)?;
-            let id = Self::get_string(&tree, "id").transpose().unwrap()?;
-            let image = Self::get_string(&tree, "image").transpose().unwrap()?;
-            let domain = Self::get_string(&tree, "domain")?;
-
-            let container_info = self.instance.inspect_container(&id, None).await?;
-            let status = container_info.state.unwrap().status.unwrap().into();
-
-            deployments.push(ServiceInfo {
-                id,
-                domain,
-                image,
-                status,
-            })
-        }
-
-        Ok(deployments)
+    async fn list(&self) -> Result<Vec<String>> {
+        Ok(self
+            .state
+            .tree_names()
+            .iter()
+            .map(|iv| iv.as_ref().to_vec())
+            .map(String::from_utf8)
+            .map(StdResult::unwrap)
+            .collect())
     }
 
     #[instrument(
@@ -168,7 +147,7 @@ impl Deployer for Docker {
         let tree = self.state.open_tree(&options.name)?;
 
         // Delete any old containers if they exist
-        if let Some(id) = Self::get_string(&tree, "id")? {
+        if let Some(id) = get_string(&tree, "id")? {
             info!("deployment already exists, removing old version");
             if let Err(_) = self.stop_by_id(&id).await {
                 debug!("deployment already stopped");
@@ -279,17 +258,11 @@ impl Drop for Docker {
     }
 }
 
-impl From<ContainerStateStatusEnum> for Status {
-    fn from(state: ContainerStateStatusEnum) -> Status {
-        use ContainerStateStatusEnum::*;
-
-        match state {
-            CREATED => Status::Created,
-            RUNNING => Status::Running,
-            PAUSED | EXITED | REMOVING => Status::Stopped,
-            RESTARTING => Status::Restarting,
-            DEAD => Status::Killed,
-            _ => unreachable!(),
-        }
-    }
+/// Retrieve a string from a given key
+fn get_string<K: AsRef<[u8]>>(tree: &sled::Tree, key: K) -> Result<Option<String>> {
+    Ok(tree
+        .get(key)?
+        .map(|v| v.to_vec())
+        .map(String::from_utf8)
+        .transpose()?)
 }

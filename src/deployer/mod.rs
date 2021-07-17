@@ -47,8 +47,8 @@ pub trait Deployer: Send + Sync {
     /// Test the connection to the deployer
     async fn test(&self) -> Result<()>;
 
-    /// Get a list of all the running services
-    async fn list(&self) -> Result<Vec<ServiceInfo>>;
+    /// Get a list of all the registered services
+    async fn list(&self) -> Result<Vec<String>>;
 
     /// Create a new service
     async fn create(&self, options: CreateOpts) -> Result<String>;
@@ -61,25 +61,6 @@ pub trait Deployer: Send + Sync {
 
     /// Delete a service
     async fn delete(&self, name: String) -> Result<()>;
-}
-
-/// Information about a container
-#[derive(Debug)]
-pub struct ServiceInfo {
-    id: String,
-    domain: Option<String>,
-    image: String,
-    status: Status,
-}
-
-/// Possible states a service can be in
-#[derive(Debug)]
-pub enum Status {
-    Created,
-    Running,
-    Restarting,
-    Stopped,
-    Killed,
 }
 
 /// Options for creating a container
