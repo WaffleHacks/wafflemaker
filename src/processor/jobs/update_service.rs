@@ -140,15 +140,15 @@ impl Job for UpdateService {
         //   - start new version
         let new_id = fail!(deployer::instance().create(options.build()).await);
         if let Some(id) = previous_id {
-            fail!(deployer::instance().stop_by_id(id.clone()).await);
+            fail!(deployer::instance().stop_by_id(id).await);
         }
-        let deployed = deployer::instance().start_by_id(new_id.clone()).await;
+        let deployed = deployer::instance().start_by_id(&new_id).await;
         match (previous_id, deployed) {
-            (Some(id), Ok(_)) => fail!(deployer::instance().delete_by_id(id.clone()).await),
+            (Some(id), Ok(_)) => fail!(deployer::instance().delete_by_id(id).await),
             (Some(id), Err(e)) => {
                 error!(error = %e, "failed to deploy new service, restarting old version");
-                fail!(deployer::instance().start_by_id(id.clone()).await);
-                fail!(deployer::instance().delete_by_id(new_id).await);
+                fail!(deployer::instance().start_by_id(id).await);
+                fail!(deployer::instance().delete_by_id(&new_id).await);
                 return;
             }
             (None, Err(e)) => {

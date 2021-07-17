@@ -19,11 +19,11 @@ impl DeleteService {
 impl Job for DeleteService {
     #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
-        if let Err(_) = deployer::instance().stop(self.name.clone()).await {
+        if let Err(_) = deployer::instance().stop(&self.name).await {
             debug!("deployment already stopped");
         }
 
-        fail!(deployer::instance().delete(self.name.clone()).await);
+        fail!(deployer::instance().delete(&self.name).await);
 
         if let Err(_) = vault::instance().delete_database_role(&self.name).await {
             debug!("no database role configured");

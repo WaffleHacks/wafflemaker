@@ -54,22 +54,22 @@ pub trait Deployer: Send + Sync {
     async fn create(&self, options: CreateOpts) -> Result<String>;
 
     /// Start a service
-    async fn start(&self, name: String) -> Result<()>;
+    async fn start(&self, name: &str) -> Result<()>;
 
     /// Start a service with its ID
-    async fn start_by_id(&self, id: String) -> Result<()>;
+    async fn start_by_id(&self, id: &str) -> Result<()>;
 
     /// Stop a service
-    async fn stop(&self, name: String) -> Result<()>;
+    async fn stop(&self, name: &str) -> Result<()>;
 
     /// Stop a service with its ID
-    async fn stop_by_id(&self, id: String) -> Result<()>;
+    async fn stop_by_id(&self, id: &str) -> Result<()>;
 
     /// Delete a service
-    async fn delete(&self, name: String) -> Result<()>;
+    async fn delete(&self, name: &str) -> Result<()>;
 
     /// Delete a service by its ID
-    async fn delete_by_id(&self, id: String) -> Result<()>;
+    async fn delete_by_id(&self, id: &str) -> Result<()>;
 }
 
 /// Options for creating a container

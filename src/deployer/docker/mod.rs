@@ -199,44 +199,44 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn start(&self, name: String) -> Result<()> {
+    async fn start(&self, name: &str) -> Result<()> {
         let id = self.id_from_name(name)?;
-        self.start_by_id(id).await?;
+        self.start_by_id(&id).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
-    async fn start_by_id(&self, id: String) -> Result<()> {
+    async fn start_by_id(&self, id: &str) -> Result<()> {
         self.instance.start_container::<&str>(&id, None).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
-    async fn stop(&self, name: String) -> Result<()> {
+    async fn stop(&self, name: &str) -> Result<()> {
         let id = self.id_from_name(name)?;
-        self.stop_by_id(id).await?;
+        self.stop_by_id(&id).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
-    async fn stop_by_id(&self, id: String) -> Result<()> {
+    async fn stop_by_id(&self, id: &str) -> Result<()> {
         self.instance.stop_container(&id, None).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
-    async fn delete(&self, name: String) -> Result<()> {
+    async fn delete(&self, name: &str) -> Result<()> {
         let id = self.id_from_name(&name)?;
-        self.delete_by_id(id).await?;
+        self.delete_by_id(&id).await?;
 
         // Remove the state for the deployment
-        self.state.drop_tree(name.as_str())?;
+        self.state.drop_tree(name)?;
 
         Ok(())
     }
 
     #[instrument(skip(self))]
-    async fn delete_by_id(&self, id: String) -> Result<()> {
+    async fn delete_by_id(&self, id: &str) -> Result<()> {
         self.instance
             .remove_container(
                 &id,
