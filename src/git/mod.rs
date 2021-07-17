@@ -1,5 +1,4 @@
-use arc_swap::ArcSwap;
-use once_cell::sync::Lazy;
+use once_cell::sync::OnceCell;
 use std::{
     path::Path,
     sync::{mpsc, Arc},
@@ -17,8 +16,7 @@ use service::{Method, Return};
 
 type Result<T> = std::result::Result<T, git2::Error>;
 
-static STATIC_INSTANCE: Lazy<ArcSwap<Repository>> =
-    Lazy::new(|| ArcSwap::from_pointee(Repository::default()));
+static INSTANCE: OnceCell<Arc<Repository>> = OnceCell::new();
 
 /// A high-level async wrapper around `git2::Repository`
 #[derive(Clone)]
@@ -63,21 +61,14 @@ impl Repository {
     }
 }
 
-impl Default for Repository {
-    fn default() -> Repository {
-        let (channel, _) = mpsc::sync_channel(1);
-        Repository(channel)
-    }
-}
-
 /// Start and connect to the git service
 pub fn initialize<P: AsRef<Path>>(path: P) -> JoinHandle<()> {
     let (channel, handle) = service::spawn(path);
-    STATIC_INSTANCE.swap(Arc::from(Repository(channel)));
+    INSTANCE.get_or_init(|| Arc::from(Repository(channel)));
     handle
 }
 
 /// Retrieve an instance of the repository
 pub fn instance() -> Arc<Repository> {
-    STATIC_INSTANCE.load().clone()
+    INSTANCE.get().unwrap().clone()
 }

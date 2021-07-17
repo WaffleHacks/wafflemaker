@@ -1,6 +1,5 @@
 use crate::config::Secrets;
-use arc_swap::ArcSwap;
-use once_cell::sync::Lazy;
+use once_cell::sync::OnceCell;
 use reqwest::{
     header::{HeaderMap, HeaderValue},
     Client, Method, StatusCode,
@@ -26,8 +25,7 @@ use models::*;
 
 pub use models::{StaticCredentials, AWS};
 
-static STATIC_INSTANCE: Lazy<ArcSwap<Vault>> =
-    Lazy::new(|| ArcSwap::from_pointee(Vault::default()));
+static STATIC_INSTANCE: OnceCell<Arc<Vault>> = OnceCell::new();
 
 /// A wrapper around the Hashicorp Vault API
 #[derive(Debug)]
@@ -226,13 +224,13 @@ pub async fn initialize(config: &Secrets, stop: Receiver<()>) -> Result<()> {
 
     tokio::task::spawn(renewer(renewal_period, stop));
 
-    STATIC_INSTANCE.swap(Arc::from(vault));
+    STATIC_INSTANCE.get_or_init(|| Arc::from(vault));
     Ok(())
 }
 
 /// Retrieve an instance of Vault
 pub fn instance() -> Arc<Vault> {
-    STATIC_INSTANCE.load().clone()
+    STATIC_INSTANCE.get().unwrap().clone()
 }
 
 /// Automatically renew the token every 24hr

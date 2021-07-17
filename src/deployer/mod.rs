@@ -1,19 +1,16 @@
 use crate::config::{Deployment, DeploymentEngine};
-use arc_swap::ArcSwap;
 use async_trait::async_trait;
-use once_cell::sync::Lazy;
+use once_cell::sync::OnceCell;
 use std::{collections::HashMap, sync::Arc};
 
 mod docker;
 mod error;
-mod noop;
 
 use docker::Docker;
 pub use error::Error;
 use error::Result;
 
-static STATIC_INSTANCE: Lazy<ArcSwap<Box<dyn Deployer>>> =
-    Lazy::new(|| ArcSwap::from_pointee(Box::new(noop::Noop)));
+static INSTANCE: OnceCell<Arc<Box<dyn Deployer>>> = OnceCell::new();
 
 /// Connect to the deployer service
 fn connect(config: &Deployment) -> Result<Box<dyn Deployer>> {
@@ -35,13 +32,13 @@ pub async fn initialize(config: &Deployment) -> Result<()> {
     let deployer = connect(config)?;
     deployer.test().await?;
 
-    STATIC_INSTANCE.swap(Arc::from(deployer));
+    INSTANCE.get_or_init(|| Arc::from(deployer));
     Ok(())
 }
 
 /// Retrieve an instance of the deployer service
 pub fn instance() -> Arc<Box<dyn Deployer>> {
-    STATIC_INSTANCE.load().clone()
+    INSTANCE.get().unwrap().clone()
 }
 
 /// The interface for managing the deployments
