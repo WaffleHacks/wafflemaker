@@ -1,6 +1,5 @@
 use crate::http::errors::AuthorizationError;
 use ring::hmac;
-use tracing::debug;
 use warp::{reject, Rejection};
 
 /// Ensure that the authorization header is correct
@@ -34,7 +33,7 @@ pub fn github(raw_body: &[u8], raw_signature: String, secret: &[u8]) -> Result<(
 
     // Display the expected signature in debug builds
     #[cfg(debug_assertions)]
-    debug!(
+    tracing::debug!(
         "signature validation: expected \"{}\", got \"{}\"",
         hex::encode(hmac::sign(&key, raw_body).as_ref()),
         signature_hex
