@@ -8,7 +8,7 @@ use bollard::{
 };
 use futures::stream::StreamExt;
 use sled::{Config, Db, Mode};
-use std::{collections::HashMap, fs, path::Path, result::Result as StdResult};
+use std::{collections::HashMap, fs, path::Path};
 use tracing::{debug, error, info, instrument};
 
 #[derive(Debug)]
@@ -88,27 +88,6 @@ impl Docker {
         let tree = self.state.open_tree(name.as_ref())?;
         get_string(&tree, "id").transpose().unwrap()
     }
-
-    /// Stop a container by its ID
-    async fn stop_by_id(&self, id: &str) -> Result<()> {
-        self.instance.stop_container(id, None).await?;
-        Ok(())
-    }
-
-    /// Delete a container by its ID
-    async fn delete_by_id(&self, id: &str) -> Result<()> {
-        self.instance
-            .remove_container(
-                id,
-                Some(RemoveContainerOptions {
-                    v: true,
-                    link: false,
-                    force: false,
-                }),
-            )
-            .await?;
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -123,15 +102,19 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn list(&self) -> Result<Vec<String>> {
-        Ok(self
-            .state
-            .tree_names()
-            .iter()
-            .map(|iv| iv.as_ref().to_vec())
-            .map(String::from_utf8)
-            .map(StdResult::unwrap)
-            .collect())
+    async fn list(&self) -> Result<HashMap<String, String>> {
+        let mut mapping = HashMap::new();
+        for tree_name in self.state.tree_names() {
+            let id = get_string(&self.state.open_tree(&tree_name)?, "id")?;
+            if let Some(id) = id {
+                let name = String::from_utf8(tree_name.as_ref().to_vec()).unwrap();
+                mapping.insert(name, id);
+            } else {
+                continue;
+            }
+        }
+
+        Ok(mapping)
     }
 
     #[instrument(
@@ -145,15 +128,6 @@ impl Deployer for Docker {
     ]
     async fn create(&self, options: CreateOpts) -> Result<String> {
         let tree = self.state.open_tree(&options.name)?;
-
-        // Delete any old containers if they exist
-        if let Some(id) = get_string(&tree, "id")? {
-            info!("deployment already exists, removing old version");
-            if let Err(_) = self.stop_by_id(&id).await {
-                debug!("deployment already stopped");
-            }
-            self.delete_by_id(&id).await?;
-        }
 
         tree.insert("image", options.image.as_str())?;
 
@@ -227,6 +201,12 @@ impl Deployer for Docker {
     #[instrument(skip(self))]
     async fn start(&self, name: String) -> Result<()> {
         let id = self.id_from_name(name)?;
+        self.start_by_id(id).await?;
+        Ok(())
+    }
+
+    #[instrument(skip(self))]
+    async fn start_by_id(&self, id: String) -> Result<()> {
         self.instance.start_container::<&str>(&id, None).await?;
         Ok(())
     }
@@ -234,17 +214,39 @@ impl Deployer for Docker {
     #[instrument(skip(self))]
     async fn stop(&self, name: String) -> Result<()> {
         let id = self.id_from_name(name)?;
-        self.stop_by_id(&id).await?;
+        self.stop_by_id(id).await?;
+        Ok(())
+    }
+
+    #[instrument(skip(self))]
+    async fn stop_by_id(&self, id: String) -> Result<()> {
+        self.instance.stop_container(&id, None).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
     async fn delete(&self, name: String) -> Result<()> {
         let id = self.id_from_name(&name)?;
-        self.delete_by_id(&id).await?;
+        self.delete_by_id(id).await?;
 
         // Remove the state for the deployment
         self.state.drop_tree(name.as_str())?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self))]
+    async fn delete_by_id(&self, id: String) -> Result<()> {
+        self.instance
+            .remove_container(
+                &id,
+                Some(RemoveContainerOptions {
+                    v: true,
+                    link: false,
+                    force: false,
+                }),
+            )
+            .await?;
 
         Ok(())
     }

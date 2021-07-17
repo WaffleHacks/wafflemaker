@@ -9,7 +9,7 @@ use crate::{
 use async_trait::async_trait;
 use rand::{distributions::Alphanumeric, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use tracing::{info, instrument, warn};
+use tracing::{error, info, instrument, warn};
 
 #[derive(Debug)]
 pub struct UpdateService {
@@ -121,11 +121,44 @@ impl Job for UpdateService {
             options = options.environment(name.to_uppercase(), &config.dependencies.redis);
         }
 
-        // TODO: perform rolling update
-        // Create and start the container
-        let id = fail!(deployer::instance().create(options.build()).await);
-        fail!(deployer::instance().start(self.name.clone()).await);
-        info!("deployed with id \"{}\"", id);
+        let known_services = fail!(deployer::instance().list().await);
+        let previous_id = known_services.get(&self.name);
+
+        // Perform a rolling update of the service (if a previous version existed)
+        // Flow (assuming previous version existed):
+        //   - create new version
+        //   - stop old version
+        //   - start new version
+        //   - on:
+        //     - failure:
+        //       - start old version
+        //       - delete new version
+        //     - success:
+        //       - delete old version
+        // Flow (new service):
+        //   - create new version
+        //   - start new version
+        let new_id = fail!(deployer::instance().create(options.build()).await);
+        if let Some(id) = previous_id {
+            fail!(deployer::instance().stop_by_id(id.clone()).await);
+        }
+        let deployed = deployer::instance().start_by_id(new_id.clone()).await;
+        match (previous_id, deployed) {
+            (Some(id), Ok(_)) => fail!(deployer::instance().delete_by_id(id.clone()).await),
+            (Some(id), Err(e)) => {
+                error!(error = %e, "failed to deploy new service, restarting old version");
+                fail!(deployer::instance().start_by_id(id.clone()).await);
+                fail!(deployer::instance().delete_by_id(new_id).await);
+                return;
+            }
+            (None, Err(e)) => {
+                error!(error = %e, "failed to deploy new service");
+                return;
+            }
+            (None, Ok(_)) => {}
+        }
+
+        info!("deployed with id \"{}\"", new_id);
 
         // Save any modifications to the static secrets
         fail!(

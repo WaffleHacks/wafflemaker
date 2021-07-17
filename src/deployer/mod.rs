@@ -47,8 +47,8 @@ pub trait Deployer: Send + Sync {
     /// Test the connection to the deployer
     async fn test(&self) -> Result<()>;
 
-    /// Get a list of all the registered services
-    async fn list(&self) -> Result<Vec<String>>;
+    /// Get a map of all the registered services from the name to the id
+    async fn list(&self) -> Result<HashMap<String, String>>;
 
     /// Create a new service
     async fn create(&self, options: CreateOpts) -> Result<String>;
@@ -56,11 +56,20 @@ pub trait Deployer: Send + Sync {
     /// Start a service
     async fn start(&self, name: String) -> Result<()>;
 
+    /// Start a service with its ID
+    async fn start_by_id(&self, id: String) -> Result<()>;
+
     /// Stop a service
     async fn stop(&self, name: String) -> Result<()>;
 
+    /// Stop a service with its ID
+    async fn stop_by_id(&self, id: String) -> Result<()>;
+
     /// Delete a service
     async fn delete(&self, name: String) -> Result<()>;
+
+    /// Delete a service by its ID
+    async fn delete_by_id(&self, id: String) -> Result<()>;
 }
 
 /// Options for creating a container
