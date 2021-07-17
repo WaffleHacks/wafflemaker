@@ -6,7 +6,7 @@ path "services/data/+" {
 
 # Allow configuring and reading credentials for the database
 path "database/static-roles/+" {
-  capabilities = ["create", "delete", "update"]
+  capabilities = ["list", "create", "delete"]
   allowed_parameters = {
     "db_name" = ["postgresql"]
   }
@@ -14,6 +14,10 @@ path "database/static-roles/+" {
 
 path "database/static-creds/+" {
   capabilities = ["read"]
+}
+
+path "database/rotate-role/+" {
+  capabilities = ["update"]
 }
 
 

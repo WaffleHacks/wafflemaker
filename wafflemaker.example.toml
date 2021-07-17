@@ -71,7 +71,8 @@
 
   # A Vault token that has the following permissions:
   #   - create, read, update on services/data/+
-  #   - create, delete, update on database/static-roles/+ for a database named "postgresql"
+  #   - list, create, delete on database/static-roles/+ for a database named "postgresql"
+  #   - update on database/rotate-role/+
   #   - read on database/static-creds/+
   #   - read on aws/creds/+
   # The token should not have a max TTL and be able to renew itself

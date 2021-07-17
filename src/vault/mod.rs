@@ -3,10 +3,11 @@ use arc_swap::ArcSwap;
 use once_cell::sync::Lazy;
 use reqwest::{
     header::{HeaderMap, HeaderValue},
-    Client, StatusCode,
+    Client, Method, StatusCode,
 };
 use std::{
     collections::{HashMap, HashSet},
+    str::FromStr,
     sync::Arc,
 };
 use tokio::{
@@ -125,6 +126,68 @@ impl Vault {
             .json()
             .await?;
         Ok(response.data)
+    }
+
+    /// List all the static roles for PostgreSQL
+    pub async fn list_database_roles(&self) -> Result<Vec<String>> {
+        let response: BaseResponse<StaticRoles> = self
+            .client
+            .request(
+                Method::from_str("LIST").unwrap(),
+                format!("{}v1/database/static-roles/postgresql", self.url),
+            )
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        Ok(response.data.keys)
+    }
+
+    /// Create a static role within PostgreSQL
+    pub async fn create_database_role(&self, name: &str) -> Result<()> {
+        self.client
+            .post(format!("{}v1/database/static-roles/{}", self.url, name))
+            .json(&StaticRoles::new(name))
+            .send()
+            .await?
+            .error_for_status()?;
+        Ok(())
+    }
+
+    /// Delete a static role from PostgreSQL
+    pub async fn delete_database_role(&self, name: &str) -> Result<()> {
+        self.client
+            .delete(format!("{}v1/database/static-roles/{}", self.url, name))
+            .send()
+            .await?
+            .error_for_status()?;
+        Ok(())
+    }
+
+    /// Get credentials for a static role from PostgreSQL
+    pub async fn get_database_credentials(&self, role: &str) -> Result<StaticCredentials> {
+        let response: BaseResponse<StaticCredentials> = self
+            .client
+            .get(format!("{}v1/database/static-creds/{}", self.url, role))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        Ok(response.data)
+    }
+
+    /// Rotate the credentials for a static role in PostgreSQL
+    pub async fn rotate_database_credentials(&self, role: &str) -> Result<()> {
+        self.client
+            .post(format!("{}v1/database/rotate-role/{}", self.url, role))
+            .send()
+            .await?
+            .error_for_status()?;
+        Ok(())
     }
 }
 

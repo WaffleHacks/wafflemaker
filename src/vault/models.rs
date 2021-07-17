@@ -29,6 +29,7 @@ pub enum Permission {
     Update,
     Delete,
     List,
+    Deny,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -47,7 +48,8 @@ impl<'paths> Capabilities<'paths> {
         m.insert("auth/token/renew-self", set![Update]);
         m.insert("aws/creds/+", set![Read]);
         m.insert("database/static-creds/+", set![Read]);
-        m.insert("database/static-roles/+", set![Create, Delete, Update]);
+        m.insert("database/static-roles/+", set![List, Create, Delete]);
+        m.insert("database/rotate-role/+", set![Update]);
         m.insert("services/data/+", set![Create, Read, Update]);
         m
     }
@@ -70,4 +72,37 @@ pub struct Secret {
 pub struct AWS {
     pub access_key: String,
     pub secret_key: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct StaticRoles<'s> {
+    #[serde(skip_deserializing)]
+    db_name: &'s str,
+    #[serde(skip_deserializing)]
+    username: &'s str,
+    #[serde(skip_deserializing)]
+    rotation_statements: &'s [&'s str],
+    #[serde(skip_deserializing)]
+    rotation_period: &'s str,
+
+    #[serde(skip_serializing)]
+    pub keys: Vec<String>,
+}
+
+impl<'s> StaticRoles<'s> {
+    pub fn new(username: &'s str) -> StaticRoles<'s> {
+        StaticRoles {
+            keys: Default::default(),
+            db_name: "postgresql",
+            rotation_statements: &[r#"ALTER USER "{{name}}" WITH PASSWORD '{{password}}';"#],
+            rotation_period: "2628000",
+            username,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StaticCredentials {
+    pub password: String,
+    pub username: String,
 }
