@@ -1,5 +1,6 @@
 use super::Job;
 use crate::{
+    config,
     deployer::{self, CreateOpts},
     fail,
     service::{AWSPart, Format, Secret, Service},
@@ -36,13 +37,12 @@ impl Job for UpdateService {
 
         if service.web.enabled {
             let subdomain = self.name.replace("-", ".");
-            let domain = match &service.web.base {
-                Some(base) => format!("{}.{}", subdomain, base),
-                // TODO: substitute default domain
-                None => format!("{}.wafflehacks.tech", subdomain),
+            let base = match &service.web.base {
+                Some(base) => base,
+                None => &config::instance().deployment.domain,
             };
 
-            options = options.domain(&domain);
+            options = options.domain(format!("{}.{}", subdomain, base));
         }
 
         for (k, v) in service.environment.iter() {

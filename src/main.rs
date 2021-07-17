@@ -25,9 +25,10 @@ async fn main() -> Result<()> {
     let cli = Args::from_args();
 
     // Get the configuration
-    let configuration = config::parse(cli.config)
+    config::parse(cli.config)
         .await
         .context("Failed to load configuration")?;
+    let configuration = config::instance();
     let address = cli.address.unwrap_or(configuration.agent.address);
     let log_filter = cli
         .log_level
@@ -58,12 +59,10 @@ async fn main() -> Result<()> {
     vault::initialize(&configuration.secrets, stop_rx).await?;
 
     // Start the job processor
-    processor::spawn(configuration.clone(), stop_tx.clone());
+    processor::spawn(stop_tx.clone());
 
     // Setup the routes
-    let routes = http::routes(configuration)
-        .recover(http::recover)
-        .with(trace_request());
+    let routes = http::routes().recover(http::recover).with(trace_request());
 
     // Bind the server
     let mut stop_rx = stop_tx.subscribe();
