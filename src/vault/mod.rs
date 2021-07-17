@@ -130,19 +130,21 @@ impl Vault {
 
     /// List all the static roles for PostgreSQL
     pub async fn list_database_roles(&self) -> Result<Vec<String>> {
-        let response: BaseResponse<StaticRoles> = self
+        let response = self
             .client
             .request(
                 Method::from_str("LIST").unwrap(),
-                format!("{}v1/database/static-roles/postgresql", self.url),
+                format!("{}v1/database/static-roles", self.url),
             )
             .send()
-            .await?
-            .error_for_status()?
-            .json()
             .await?;
 
-        Ok(response.data.keys)
+        if response.status() == StatusCode::NOT_FOUND {
+            Ok(Vec::new())
+        } else {
+            let content: BaseResponse<StaticRoles> = response.error_for_status()?.json().await?;
+            Ok(content.data.keys)
+        }
     }
 
     /// Create a static role within PostgreSQL
