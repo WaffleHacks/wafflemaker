@@ -9,7 +9,7 @@ fixing many of its pain points.
 
 As stated above, Waffle Maker is used to automatically deploy our applications so that development can move as fast as
 possible. We use GitHub actions to build Docker images on each push. Waffle Maker receives webhook events from GitHub 
-whenever there is a push to the []() repository, and from Docker Hub whenever an image is built.
+whenever there is a push to the [waffles](https://github.com/WaffleHacks/waffles) repository, and from Docker Hub whenever an image is built.
 
 
 ### Inspiration
@@ -22,7 +22,7 @@ has fewer quirks and does not depend on indentation.
 
 ### Methodology
 
-When () gets updated, the diff is inspected, and the deployments are updated accordingly. Database credentials and secrets
+When [waffles](https://github.com/WaffleHacks/waffles) gets updated, the diff is inspected, and the deployments are updated accordingly. Database credentials and secrets
 are provisioned automatically per container through Vault. Secrets can either be auto-generated for things like session
 tokens, or specified directly in Vault. Should a service require web access, the DNS records are
 set up through the Cloudflare API.
