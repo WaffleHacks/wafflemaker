@@ -33,7 +33,9 @@ impl Service {
 
     /// Generate the name of a service from its file path
     pub fn name(path: &Path) -> String {
-        let repo_path = path.strip_prefix(&config::instance().git.clone_to).unwrap();
+        let repo_path = path
+            .strip_prefix(&config::instance().git.clone_to)
+            .unwrap_or(path);
         repo_path
             .with_extension("")
             .iter()
