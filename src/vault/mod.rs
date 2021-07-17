@@ -24,6 +24,8 @@ mod models;
 use error::{Error, Result};
 use models::*;
 
+pub use models::{StaticCredentials, AWS};
+
 static STATIC_INSTANCE: Lazy<ArcSwap<Vault>> =
     Lazy::new(|| ArcSwap::from_pointee(Vault::default()));
 

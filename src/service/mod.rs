@@ -6,7 +6,7 @@ use tokio::fs;
 
 mod secret;
 
-pub use secret::{Format, Secret};
+pub use secret::{Format, Part as AWSPart, Secret};
 
 /// The configuration for a service
 #[derive(Debug, Deserialize)]

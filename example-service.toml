@@ -87,6 +87,7 @@
     # Options: `alphanumeric`, `base64`, `hex`
     format = "base64"
     # The length of the string to generate
+    # When generating a base64 or hex string, the length corresponds to the number of bits
     length = 16
     # Whether to regenerate the secret on redeploy (default: false)
     regenerate = false
