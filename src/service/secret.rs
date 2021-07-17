@@ -39,7 +39,7 @@ pub enum Secret {
 impl From<AuxiliarySecret> for Secret {
     fn from(aux: AuxiliarySecret) -> Secret {
         match aux {
-            AuxiliarySecret::AWS { role, part } => Secret::AWS { role, part },
+            AuxiliarySecret::Aws { role, part } => Secret::AWS { role, part },
             AuxiliarySecret::Generate {
                 format,
                 length,
@@ -59,7 +59,7 @@ impl From<AuxiliarySecret> for Secret {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 enum AuxiliarySecret {
-    AWS {
+    Aws {
         role: String,
         part: Part,
     },

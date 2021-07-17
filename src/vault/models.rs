@@ -58,7 +58,7 @@ impl<'paths> Capabilities<'paths> {
     pub fn paths() -> Capabilities<'paths> {
         Self {
             data: HashMap::new(),
-            paths: Self::mapping().keys().map(|s| *s).collect(),
+            paths: Self::mapping().keys().copied().collect(),
         }
     }
 }

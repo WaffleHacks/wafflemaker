@@ -68,5 +68,5 @@ pub(crate) fn run(repo: &Repository, before: &str, after: &str) -> Result<Vec<Di
 /// Convert a commit to an object
 fn to_object<'r>(repo: &'r Repository, commit: &str) -> Result<Object<'r>> {
     let obj = repo.revparse_single(commit)?;
-    Ok(obj.peel(ObjectType::Tree)?)
+    obj.peel(ObjectType::Tree)
 }

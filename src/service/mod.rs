@@ -114,7 +114,7 @@ impl Docker {
             set.add(pattern);
         }
 
-        Ok(set.build()?)
+        set.build()
     }
 }
 

@@ -71,7 +71,7 @@ impl From<BollardError> for Error {
 impl From<SledError> for Error {
     fn from(error: SledError) -> Error {
         match error {
-            SledError::Io(e) => Error::Io(e.into()),
+            SledError::Io(e) => Error::Io(e),
             e => Error::State(e.into()),
         }
     }
