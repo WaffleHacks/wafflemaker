@@ -25,6 +25,12 @@ services:
     depends_on: 
       - postgresql
 
+  redis:
+    image: redis:6-alpine
+    networks:
+      default:
+        ipv4_address: 172.96.0.5
+
   setup:
     image: wafflehacks/wafflemaker:setup
     build: ./docker

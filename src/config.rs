@@ -27,6 +27,7 @@ pub fn instance() -> &'static Config {
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub agent: Agent,
+    pub dependencies: Dependencies,
     pub deployment: Deployment,
     pub git: Git,
     pub secrets: Secrets,
@@ -38,6 +39,12 @@ pub struct Agent {
     pub address: SocketAddr,
     pub log: String,
     pub workers: u32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Dependencies {
+    pub postgres: String,
+    pub redis: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -160,6 +167,12 @@ mod tests {
         assert_eq!("127.0.0.1:8000", &config.agent.address.to_string());
         assert_eq!("info", &config.agent.log);
         assert_eq!(2, config.agent.workers);
+
+        assert_eq!(
+            "postgres://{{username}}:{{password}}@127.0.0.1:5432/{{username}}",
+            config.dependencies.postgres
+        );
+        assert_eq!("redis://127.0.0.1:6379", config.dependencies.redis);
 
         assert_eq!("wafflehacks.tech", &config.deployment.domain);
         assert!(matches!(

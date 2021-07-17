@@ -28,6 +28,7 @@ impl UpdateService {
 impl Job for UpdateService {
     #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
+        let config = config::instance();
         let service = &self.config;
 
         // Create the base container creation args
@@ -39,7 +40,7 @@ impl Job for UpdateService {
             let subdomain = self.name.replace("-", ".");
             let base = match &service.web.base {
                 Some(base) => base,
-                None => &config::instance().deployment.domain,
+                None => &config.deployment.domain,
             };
 
             options = options.domain(format!("{}.{}", subdomain, base));
@@ -108,16 +109,16 @@ impl Job for UpdateService {
             }
 
             let credentials = fail!(vault::instance().get_database_credentials(&self.name).await);
-            // TODO: parameterize connection url template
-            let connection_url = "postgres://{{username}}:{{password}}@127.0.0.1:5432/{{username}}"
+            let connection_url = &config
+                .dependencies
+                .postgres
                 .replace("{{username}}", &credentials.username)
                 .replace("{{password}}", &credentials.password);
 
             options = options.environment(name.to_uppercase(), connection_url);
         }
         if let Some(name) = service.dependencies.redis() {
-            // TODO: parameterize redis value
-            options = options.environment(name.to_uppercase(), "redis://127.0.0.1:6379");
+            options = options.environment(name.to_uppercase(), &config.dependencies.redis);
         }
 
         // Create and start the container
