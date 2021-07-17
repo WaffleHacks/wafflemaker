@@ -1,5 +1,5 @@
 use super::Job;
-use crate::{deployer, fail, vault};
+use crate::{deployer, fail, service::registry::REGISTRY, vault};
 use async_trait::async_trait;
 use tracing::{debug, info, instrument};
 
@@ -19,6 +19,9 @@ impl DeleteService {
 impl Job for DeleteService {
     #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
+        let mut reg = REGISTRY.write().await;
+        reg.remove(&self.name);
+
         if deployer::instance().stop(&self.name).await.is_err() {
             debug!("deployment already stopped");
         }
