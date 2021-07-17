@@ -5,7 +5,7 @@ use crate::{
     service::Service,
 };
 use async_trait::async_trait;
-use std::path::PathBuf;
+use std::{ffi::OsStr, path::PathBuf};
 use tracing::{error, info, instrument, warn};
 
 #[derive(Debug)]
@@ -54,6 +54,11 @@ impl Job for PlanUpdate {
                     path = %diff.path.display(),
                     "unknown file delta",
                 );
+                continue;
+            }
+
+            if diff.path.extension().map(OsStr::to_str).flatten() != Some("toml") {
+                info!(path = %diff.path.display(), "skipping non-service file");
                 continue;
             }
 
