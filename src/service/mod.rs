@@ -1,3 +1,4 @@
+use crate::config;
 use globset::Glob;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr, NoneAsEmptyString};
@@ -32,7 +33,9 @@ impl Service {
 
     /// Generate the name of a service from its file path
     pub fn name(path: &Path) -> String {
-        path.with_extension("")
+        let repo_path = path.strip_prefix(&config::instance().git.clone_to).unwrap();
+        repo_path
+            .with_extension("")
             .iter()
             .rev()
             .map(OsStr::to_str)
