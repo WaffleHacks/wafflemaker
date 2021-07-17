@@ -1,5 +1,5 @@
 use super::Job;
-use crate::{deployer, fail};
+use crate::{deployer, fail, vault};
 use async_trait::async_trait;
 use tracing::{debug, info, instrument};
 
@@ -24,6 +24,11 @@ impl Job for DeleteService {
         }
 
         fail!(deployer::instance().delete(self.name.clone()).await);
+
+        if let Err(_) = vault::instance().delete_database_role(&self.name).await {
+            debug!("no database role configured");
+        }
+
         info!("successfully deleted deployment");
     }
 
