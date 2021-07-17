@@ -1,5 +1,5 @@
 use crate::config;
-use globset::Glob;
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr, NoneAsEmptyString};
 use std::{collections::HashMap, ffi::OsStr, path::Path};
@@ -11,7 +11,7 @@ mod secret;
 pub use secret::{Format, Part as AWSPart, Secret};
 
 /// The configuration for a service
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Service {
     #[serde(default)]
     pub dependencies: Dependencies,
@@ -46,7 +46,7 @@ impl Service {
 }
 
 /// All the possible external dependencies a service can require.
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub struct Dependencies {
     postgres: Option<Dependency>,
     redis: Option<Dependency>,
@@ -71,7 +71,7 @@ impl Dependencies {
 /// The definition of a dependency service. `State` specifies whether it is enabled
 /// or disabled, and `Rename` specifies the environment variables name and implicitly
 /// enables it.
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Dependency {
     State(bool),
@@ -89,7 +89,7 @@ impl Dependency {
 }
 
 /// The docker image configuration
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Docker {
     pub image: String,
     pub tag: String,
@@ -97,8 +97,29 @@ pub struct Docker {
     pub update: AutoUpdate,
 }
 
+impl Docker {
+    /// Get a glob for all the possible tags that can be updated
+    pub fn allowed_tags(&self) -> Result<GlobSet, globset::Error> {
+        let mut globs = self
+            .update
+            .additional_tags
+            .iter()
+            .map(Glob::glob)
+            .collect::<Vec<&str>>();
+        globs.push(&self.tag);
+
+        let mut set = GlobSetBuilder::new();
+        for glob in globs {
+            let pattern = Glob::new(glob)?;
+            set.add(pattern);
+        }
+
+        Ok(set.build()?)
+    }
+}
+
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct AutoUpdate {
     #[serde(default)]
     #[serde_as(as = "Vec<DisplayFromStr>")]
@@ -117,7 +138,7 @@ impl Default for AutoUpdate {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Web {
     #[serde(default = "default_true")]
     pub enabled: bool,

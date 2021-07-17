@@ -4,10 +4,11 @@ use super::{
 };
 use crate::{
     config, git,
-    processor::jobs::{self, PlanUpdate},
+    processor::jobs::{self, PlanUpdate, UpdateService},
+    service::registry,
 };
 use bytes::Bytes;
-use tracing::info;
+use tracing::{error, info};
 use warp::{http::StatusCode, reject, Rejection, Reply};
 
 /// Handle webhooks from Docker image pushes
@@ -15,9 +16,30 @@ pub async fn docker(body: Docker, authorization: String) -> Result<impl Reply, R
     let cfg = config::instance();
     validators::docker(authorization, &cfg.webhooks.docker)?;
 
-    // TODO: check if image is allowed to be deployed
+    let reg = registry::REGISTRY.read().await;
+    for (name, service) in reg.iter() {
+        // Skip if the image does not match or automatic updates are off
+        if service.docker.image != body.repository.repo_name || !service.docker.update.automatic {
+            continue;
+        }
 
-    // TODO: spawn container update job to update any containers using the specified image
+        // Check if tag is allowed
+        let tags = match service.docker.allowed_tags() {
+            Ok(t) => t,
+            Err(e) => {
+                error!(error = %e, "failed to compile tag glob");
+                continue;
+            }
+        };
+        if !tags.is_match(&body.push_data.tag) {
+            continue;
+        }
+
+        let mut updated = service.clone();
+        updated.docker.tag = body.push_data.tag.clone();
+
+        jobs::dispatch(UpdateService::new(updated, name.clone()));
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }

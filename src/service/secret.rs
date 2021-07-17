@@ -5,7 +5,7 @@ use serde::{
 use std::{fmt, str::FromStr};
 
 /// The possible formats that a secret can be encoded into.
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Format {
     Alphanumeric,
@@ -14,7 +14,7 @@ pub enum Format {
 }
 
 /// Which part of the pair to store in the variable
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Part {
     Access,
@@ -22,7 +22,7 @@ pub enum Part {
 }
 
 /// The possible secret types that can be retrieved/generated.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Secret {
     AWS {
         role: String,

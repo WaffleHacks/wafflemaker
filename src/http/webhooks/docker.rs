@@ -2,19 +2,19 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Docker {
-    callback_url: String,
-    push_data: PushData,
-    repository: Repository,
+    pub callback_url: String,
+    pub push_data: PushData,
+    pub repository: Repository,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct PushData {
-    tag: String,
+    pub tag: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Repository {
-    repo_name: String,
+    pub repo_name: String,
 }
 
 #[cfg(test)]
