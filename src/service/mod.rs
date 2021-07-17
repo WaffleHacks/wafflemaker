@@ -33,8 +33,24 @@ impl Service {
 /// All the possible external dependencies a service can require.
 #[derive(Debug, Default, Deserialize)]
 pub struct Dependencies {
-    pub postgres: Option<Dependency>,
-    pub redis: Option<Dependency>,
+    postgres: Option<Dependency>,
+    redis: Option<Dependency>,
+}
+
+impl Dependencies {
+    pub fn postgres(&self) -> Option<&str> {
+        self.postgres
+            .as_ref()
+            .map(|d| d.resolve("POSTGRES_URL"))
+            .flatten()
+    }
+
+    pub fn redis(&self) -> Option<&str> {
+        self.redis
+            .as_ref()
+            .map(|d| d.resolve("REDIS_URL"))
+            .flatten()
+    }
 }
 
 /// The definition of a dependency service. `State` specifies whether it is enabled
@@ -45,6 +61,16 @@ pub struct Dependencies {
 pub enum Dependency {
     State(bool),
     Rename(String),
+}
+
+impl Dependency {
+    pub fn resolve<'n>(&'n self, default: &'n str) -> Option<&'n str> {
+        match self {
+            Self::Rename(name) => Some(&name),
+            Self::State(true) => Some(default),
+            Self::State(false) => None,
+        }
+    }
 }
 
 /// The docker image configuration
@@ -100,7 +126,7 @@ fn default_true() -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{Dependency, Service};
+    use super::Service;
 
     #[tokio::test]
     async fn deserialize() {
@@ -108,11 +134,8 @@ mod tests {
             .await
             .expect("failed to parse service");
 
-        assert_eq!(
-            service.dependencies.postgres,
-            Some(Dependency::Rename("DATABASE_URL".into()))
-        );
-        assert_eq!(service.dependencies.redis, Some(Dependency::State(false)));
+        assert_eq!(service.dependencies.postgres(), Some("DATABASE_URL"));
+        assert_eq!(service.dependencies.redis(), None);
         assert_eq!(service.docker.image, "wafflehacks/cms");
         assert_eq!(service.docker.tag, "develop");
         assert_eq!(service.docker.update.automatic, true);
@@ -129,8 +152,8 @@ mod tests {
             .await
             .expect("failed to parse service");
 
-        assert_eq!(service.dependencies.postgres, None);
-        assert_eq!(service.dependencies.redis, None);
+        assert_eq!(service.dependencies.postgres(), None);
+        assert_eq!(service.dependencies.redis(), None);
         assert_eq!(service.docker.image, "wafflehacks/cms");
         assert_eq!(service.docker.tag, "develop");
         assert_eq!(service.docker.update.automatic, true);

@@ -94,7 +94,31 @@ impl Job for UpdateService {
             options = options.environment(k.to_uppercase(), value);
         }
 
-        // TODO: add dependencies
+        if let Some(name) = service.dependencies.postgres() {
+            // Create the role if it doesn't exist
+            let roles = fail!(vault::instance().list_database_roles().await);
+            if !roles.contains(&self.name) {
+                fail!(vault::instance().create_database_role(&self.name).await);
+            } else {
+                fail!(
+                    vault::instance()
+                        .rotate_database_credentials(&self.name)
+                        .await
+                );
+            }
+
+            let credentials = fail!(vault::instance().get_database_credentials(&self.name).await);
+            // TODO: parameterize connection url template
+            let connection_url = "postgres://{{username}}:{{password}}@127.0.0.1:5432/{{username}}"
+                .replace("{{username}}", &credentials.username)
+                .replace("{{password}}", &credentials.password);
+
+            options = options.environment(name.to_uppercase(), connection_url);
+        }
+        if let Some(name) = service.dependencies.redis() {
+            // TODO: parameterize redis value
+            options = options.environment(name.to_uppercase(), "redis://127.0.0.1:6379");
+        }
 
         // Create and start the container
         let id = fail!(deployer::instance().create(options.build()).await);
