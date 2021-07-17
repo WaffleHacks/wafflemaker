@@ -3,7 +3,7 @@ use crate::{
     config,
     deployer::{self, CreateOpts},
     fail,
-    service::{AWSPart, Format, Secret, Service},
+    service::{registry::REGISTRY, AWSPart, Format, Secret, Service},
     vault::{self, AWS},
 };
 use async_trait::async_trait;
@@ -30,6 +30,10 @@ impl Job for UpdateService {
     async fn run(&self) {
         let config = config::instance();
         let service = &self.config;
+
+        // Update the service in the registry
+        let mut reg = REGISTRY.write().await;
+        reg.insert(self.name.clone(), service.clone());
 
         // Create the base container creation args
         let mut options = CreateOpts::builder()
