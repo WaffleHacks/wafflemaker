@@ -121,6 +121,7 @@ impl Job for UpdateService {
             options = options.environment(name.to_uppercase(), &config.dependencies.redis);
         }
 
+        // TODO: perform rolling update
         // Create and start the container
         let id = fail!(deployer::instance().create(options.build()).await);
         fail!(deployer::instance().start(self.name.clone()).await);
