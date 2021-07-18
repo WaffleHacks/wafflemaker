@@ -160,8 +160,6 @@ fn fast_forward(
         None => String::from_utf8_lossy(local_branch.name_bytes()).to_string(),
     };
 
-    println!("{:?}", remote_commit.refname());
-
     // Re-target the current branch
     local_branch.set_target(
         remote_commit.id(),
