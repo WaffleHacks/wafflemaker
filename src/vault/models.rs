@@ -47,9 +47,8 @@ impl<'paths> Capabilities<'paths> {
         let mut m = HashMap::new();
         m.insert("auth/token/renew-self", set![Update]);
         m.insert("aws/creds/+", set![Read]);
-        m.insert("database/static-creds/+", set![Read]);
-        m.insert("database/static-roles/+", set![List, Create, Delete]);
-        m.insert("database/rotate-role/+", set![Update]);
+        m.insert("database/creds/+", set![Read]);
+        m.insert("database/roles/+", set![List, Create, Delete]);
         m.insert("services/data/+", set![Create, Read, Update]);
         m
     }
@@ -75,34 +74,34 @@ pub struct AWS {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct StaticRoles<'s> {
+pub struct DatabaseRole<'s> {
     #[serde(skip_deserializing)]
     db_name: &'s str,
     #[serde(skip_deserializing)]
-    username: &'s str,
+    creation_statements: Vec<String>,
     #[serde(skip_deserializing)]
-    rotation_statements: &'s [&'s str],
-    #[serde(skip_deserializing)]
-    rotation_period: &'s str,
+    default_ttl: &'s str,
 
     #[serde(skip_serializing)]
     pub keys: Vec<String>,
 }
 
-impl<'s> StaticRoles<'s> {
-    pub fn new(username: &'s str) -> StaticRoles<'s> {
-        StaticRoles {
-            keys: Default::default(),
+impl<'s> DatabaseRole<'s> {
+    pub fn new(role: &str) -> DatabaseRole<'s> {
+        Self {
             db_name: "postgresql",
-            rotation_statements: &[r#"ALTER USER "{{name}}" WITH PASSWORD '{{password}}';"#],
-            rotation_period: "2628000",
-            username,
+            default_ttl: "2628000", // month in seconds
+            creation_statements: vec![
+                r#"CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}' INHERIT;"#.to_owned(),
+                format!(r#"GRANT {} TO "{{{{name}}}}";"#, role),
+            ],
+            keys: Default::default(),
         }
     }
 }
 
 #[derive(Debug, Deserialize)]
-pub struct StaticCredentials {
+pub struct RoleCredentials {
     pub password: String,
     pub username: String,
 }

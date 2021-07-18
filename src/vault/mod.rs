@@ -23,7 +23,7 @@ mod models;
 use error::{Error, Result};
 use models::*;
 
-pub use models::{StaticCredentials, AWS};
+pub use models::AWS;
 
 static STATIC_INSTANCE: OnceCell<Arc<Vault>> = OnceCell::new();
 
@@ -129,13 +129,13 @@ impl Vault {
         Ok(response.data)
     }
 
-    /// List all the static roles for PostgreSQL
+    /// List all the roles for PostgreSQL
     pub async fn list_database_roles(&self) -> Result<Vec<String>> {
         let response = self
             .client
             .request(
                 Method::from_str("LIST").unwrap(),
-                format!("{}v1/database/static-roles", self.url),
+                format!("{}v1/database/roles", self.url),
             )
             .send()
             .await?;
@@ -144,17 +144,17 @@ impl Vault {
             info!("gathered list of all database users");
             Ok(Vec::new())
         } else {
-            let content: BaseResponse<StaticRoles> = response.error_for_status()?.json().await?;
+            let content: BaseResponse<DatabaseRole> = response.error_for_status()?.json().await?;
             info!("gathered list of all database users");
             Ok(content.data.keys)
         }
     }
 
-    /// Create a static role within PostgreSQL
+    /// Create a role within PostgreSQL
     pub async fn create_database_role(&self, name: &str) -> Result<()> {
         self.client
-            .post(format!("{}v1/database/static-roles/{}", self.url, name))
-            .json(&StaticRoles::new(name))
+            .post(format!("{}v1/database/roles/{}", self.url, name))
+            .json(&DatabaseRole::new(name))
             .send()
             .await?
             .error_for_status()?;
@@ -165,7 +165,7 @@ impl Vault {
     /// Delete a static role from PostgreSQL
     pub async fn delete_database_role(&self, name: &str) -> Result<()> {
         self.client
-            .delete(format!("{}v1/database/static-roles/{}", self.url, name))
+            .delete(format!("{}v1/database/roles/{}", self.url, name))
             .send()
             .await?
             .error_for_status()?;
@@ -174,10 +174,10 @@ impl Vault {
     }
 
     /// Get credentials for a static role from PostgreSQL
-    pub async fn get_database_credentials(&self, role: &str) -> Result<StaticCredentials> {
-        let response: BaseResponse<StaticCredentials> = self
+    pub async fn get_database_credentials(&self, role: &str) -> Result<RoleCredentials> {
+        let response: BaseResponse<RoleCredentials> = self
             .client
-            .get(format!("{}v1/database/static-creds/{}", self.url, role))
+            .get(format!("{}v1/database/creds/{}", self.url, role))
             .send()
             .await?
             .error_for_status()?
@@ -185,17 +185,6 @@ impl Vault {
             .await?;
         info!("generated credentials for database user");
         Ok(response.data)
-    }
-
-    /// Rotate the credentials for a static role in PostgreSQL
-    pub async fn rotate_database_credentials(&self, role: &str) -> Result<()> {
-        self.client
-            .post(format!("{}v1/database/rotate-role/{}", self.url, role))
-            .send()
-            .await?
-            .error_for_status()?;
-        info!("refreshed database user credentials");
-        Ok(())
     }
 }
 

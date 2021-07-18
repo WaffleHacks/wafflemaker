@@ -5,22 +5,17 @@ path "services/data/+" {
 
 
 # Allow configuring and reading credentials for the database
-path "database/static-roles/+" {
+path "database/roles/+" {
   capabilities = ["list", "create", "delete"]
   allowed_parameters = {
-    "db_name" = ["postgresql"],
-    "rotation_statements" = []
-    "username" = []
-    "rotation_period" = []
+    "db_name" = ["postgresql"]
+    "default_ttl" = []
+    "creation_statements" = []
   }
 }
 
-path "database/static-creds/+" {
+path "database/creds/+" {
   capabilities = ["read"]
-}
-
-path "database/rotate-role/+" {
-  capabilities = ["update"]
 }
 
 

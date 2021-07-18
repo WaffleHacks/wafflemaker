@@ -108,13 +108,6 @@ impl Job for UpdateService {
             let roles = fail!(vault::instance().list_database_roles().await);
             if !roles.contains(&self.name) {
                 fail!(vault::instance().create_database_role(&self.name).await);
-            } else {
-                fail!(
-                    vault::instance()
-                        .rotate_database_credentials(&self.name)
-                        .await
-                );
-                info!("rotated credentials for pre-existing user");
             }
 
             let credentials = fail!(vault::instance().get_database_credentials(&self.name).await);
@@ -122,7 +115,8 @@ impl Job for UpdateService {
                 .dependencies
                 .postgres
                 .replace("{{username}}", &credentials.username)
-                .replace("{{password}}", &credentials.password);
+                .replace("{{password}}", &credentials.password)
+                .replace("{{database}}", &self.name);
 
             options = options.environment(name.to_uppercase(), connection_url);
             debug!(name = %name, "added postgres database url");
