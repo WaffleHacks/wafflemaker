@@ -39,24 +39,45 @@ if not success:
     exit(1)
 
 print("Initializing database engine...")
-send_request("POST", "/v1/sys/mounts/database", {"type": "database"}, "Failed to initialize database engine")
+send_request(
+    "POST",
+    "/v1/sys/mounts/database",
+    {"type": "database"},
+    "Failed to initialize database engine",
+)
 
 print("Initializing AWS engine...")
-send_request("POST", "/v1/sys/mounts/aws", {"type": "aws"}, "Failed to initialize AWS engine")
+send_request(
+    "POST", "/v1/sys/mounts/aws", {"type": "aws"}, "Failed to initialize AWS engine"
+)
 
 print("Setting root credentials...")
 send_request(
-    "POST", 
-    "/v1/aws/config/root", 
-    {"access_key": AWS_ACCESS_KEY_ID, "secret_key": AWS_SECRET_ACCESS_KEY, "region": AWS_REGION}, 
+    "POST",
+    "/v1/aws/config/root",
+    {
+        "access_key": AWS_ACCESS_KEY_ID,
+        "secret_key": AWS_SECRET_ACCESS_KEY,
+        "region": AWS_REGION,
+    },
     "Failed to configure AWS engine",
 )
 
 print("Initializing services KV engine...")
-send_request("POST", "/v1/sys/mounts/services", {"type": "kv", "options": {"version": "2"}}, "Failed to initialize services KV engine")
+send_request(
+    "POST",
+    "/v1/sys/mounts/services",
+    {"type": "kv", "options": {"version": "2"}},
+    "Failed to initialize services KV engine",
+)
 
 print("Creating `wafflemaker` role...")
 role = open("./wafflemaker.hcl", "r")
-send_request("POST", "/v1/sys/policies/acl/wafflemaker", {"policy": role.read()}, "Failed to create wafflemaker policy")
+send_request(
+    "POST",
+    "/v1/sys/policies/acl/wafflemaker",
+    {"policy": role.read()},
+    "Failed to create wafflemaker policy",
+)
 
 print("Successfully setup Vault")
