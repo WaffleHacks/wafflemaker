@@ -42,7 +42,7 @@ macro_rules! fail {
         match $result {
             Ok(v) => v,
             Err(e) => {
-                tracing::error!(error = %e, "an error occurred while processing the job");
+                fail!(@e e; "an error occurred while processing the job",);
                 return;
             }
         }
@@ -50,13 +50,22 @@ macro_rules! fail {
     ($result:expr ; $message:expr) => {
         fail!($result; $message,)
     };
-    ($result:expr ; $fmt:expr , $( $arg:expr , )* ) => {
+    ($result:expr ; $fmt:expr , $( $arg:expr ),* ) => {
         match $result {
             Ok(v) => v,
             Err(e) => {
-                tracing::error!(error = %e, $fmt, $( $arg ,)* );
+                fail!(@e e; $fmt, $( $arg, )* );
                 return;
             }
+        }
+    };
+
+    // Internal rules for displaying the error
+    (@e $error:expr; $fmt:expr , $( $arg:expr ),* ) => {
+        use std::error::Error;
+        match $error.source() {
+            Some(e) => tracing::error!(error = %$error, source = %e, $fmt, $( $arg , )*),
+            None => tracing::error!(error = %$error, $fmt, $( $arg , )*),
         }
     };
 }

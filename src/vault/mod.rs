@@ -125,6 +125,7 @@ impl Vault {
             .error_for_status()?
             .json()
             .await?;
+        info!("generated AWS credentials");
         Ok(response.data)
     }
 
@@ -140,9 +141,11 @@ impl Vault {
             .await?;
 
         if response.status() == StatusCode::NOT_FOUND {
+            info!("gathered list of all database users");
             Ok(Vec::new())
         } else {
             let content: BaseResponse<StaticRoles> = response.error_for_status()?.json().await?;
+            info!("gathered list of all database users");
             Ok(content.data.keys)
         }
     }
@@ -155,6 +158,7 @@ impl Vault {
             .send()
             .await?
             .error_for_status()?;
+        info!("created database user");
         Ok(())
     }
 
@@ -165,6 +169,7 @@ impl Vault {
             .send()
             .await?
             .error_for_status()?;
+        info!("deleted database user");
         Ok(())
     }
 
@@ -178,7 +183,7 @@ impl Vault {
             .error_for_status()?
             .json()
             .await?;
-
+        info!("generated credentials for database user");
         Ok(response.data)
     }
 
@@ -189,6 +194,7 @@ impl Vault {
             .send()
             .await?
             .error_for_status()?;
+        info!("refreshed database user credentials");
         Ok(())
     }
 }

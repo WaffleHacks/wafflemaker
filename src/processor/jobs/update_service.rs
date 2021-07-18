@@ -9,7 +9,7 @@ use crate::{
 use async_trait::async_trait;
 use rand::{distributions::Alphanumeric, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use tracing::{error, info, instrument, warn};
+use tracing::{debug, error, info, instrument, warn};
 
 #[derive(Debug)]
 pub struct UpdateService {
@@ -52,7 +52,9 @@ impl Job for UpdateService {
 
         for (k, v) in service.environment.iter() {
             options = options.environment(k.to_uppercase(), v);
+            debug!(name = %k, "added static environment variable");
         }
+        info!("loaded static environment variables");
 
         // Load secrets into the environment
         let mut static_secrets = match fail!(vault::instance().fetch_static(&self.name).await) {
@@ -97,7 +99,9 @@ impl Job for UpdateService {
             };
 
             options = options.environment(k.to_uppercase(), value);
+            debug!(name = %k, r#type = %secret.name(), "added secret from vault");
         }
+        info!("loaded secrets from vault into environment");
 
         if let Some(name) = service.dependencies.postgres() {
             // Create the role if it doesn't exist
@@ -110,6 +114,7 @@ impl Job for UpdateService {
                         .rotate_database_credentials(&self.name)
                         .await
                 );
+                info!("rotated credentials for pre-existing user");
             }
 
             let credentials = fail!(vault::instance().get_database_credentials(&self.name).await);
@@ -120,10 +125,13 @@ impl Job for UpdateService {
                 .replace("{{password}}", &credentials.password);
 
             options = options.environment(name.to_uppercase(), connection_url);
+            debug!(name = %name, "added postgres database url");
         }
         if let Some(name) = service.dependencies.redis() {
             options = options.environment(name.to_uppercase(), &config.dependencies.redis);
+            debug!(name = %name, "added redis url");
         }
+        info!("loaded service dependencies into environment");
 
         let known_services = fail!(deployer::instance().list().await);
         let previous_id = known_services.get(&self.name);

@@ -36,6 +36,17 @@ pub enum Secret {
     Load,
 }
 
+impl Secret {
+    /// Get the type of secret
+    pub fn name<'a>(&self) -> &'a str {
+        match self {
+            Secret::AWS { .. } => "aws",
+            Secret::Generate { .. } => "generate",
+            Secret::Load => "load",
+        }
+    }
+}
+
 impl From<AuxiliarySecret> for Secret {
     fn from(aux: AuxiliarySecret) -> Secret {
         match aux {

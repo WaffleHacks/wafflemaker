@@ -16,6 +16,8 @@ pub async fn docker(body: Docker, authorization: String) -> Result<impl Reply, R
     let cfg = config::instance();
     validators::docker(authorization, &cfg.webhooks.docker)?;
 
+    info!(image = %body.repository.repo_name, tag = %body.push_data.tag, "got new image update hook");
+
     let reg = registry::REGISTRY.read().await;
     for (name, service) in reg.iter() {
         // Skip if the image does not match or automatic updates are off
@@ -39,6 +41,7 @@ pub async fn docker(body: Docker, authorization: String) -> Result<impl Reply, R
         updated.docker.tag = body.push_data.tag.clone();
 
         jobs::dispatch(UpdateService::new(updated, name.clone()));
+        info!("updating service \"{}\"", name);
     }
 
     Ok(StatusCode::NO_CONTENT)
