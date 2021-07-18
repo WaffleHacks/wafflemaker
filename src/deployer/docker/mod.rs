@@ -9,6 +9,7 @@ use bollard::{
 use futures::stream::StreamExt;
 use sled::{Config, Db, Mode};
 use std::{collections::HashMap, fs, path::Path};
+use toml::value::Index;
 use tracing::{debug, error, info, instrument};
 
 #[derive(Debug)]
@@ -150,6 +151,31 @@ impl Deployer for Docker {
                 format!("traefik.http.routers.{}.tls.certresolver", router_name),
                 "letsencrypt".to_string(),
             );
+
+            // Determine the service port
+            let image = self
+                .instance
+                .inspect_image(&format!("{}:{}", &options.image, &options.tag))
+                .await?;
+            if let Some(image_config) = image.config {
+                if let Some(ports) = image_config.exposed_ports {
+                    if ports.len() >= 1 {
+                        // The port specification is in the format <port>/<tcp|udp|sctp>, but we
+                        // only care about the port itself, the protocol is assumed to be TCP
+                        let mut port = ports.keys().take(1).next().unwrap();
+                        let proto_idx = port.find("/").unwrap();
+                        port.truncate(proto_idx);
+
+                        labels.insert(
+                            format!(
+                                "traefik.http.services.{}.loadbalancer.server.port",
+                                router_name
+                            ),
+                            port.to_owned(),
+                        );
+                    }
+                }
+            }
         }
 
         // Enable traefik if a domain is added
