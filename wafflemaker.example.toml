@@ -42,6 +42,10 @@
   # Expects a path for `local`, and a URL for `http` or `ssl`
   endpoint = "unix:///var/run/docker.sock"
 
+  # The Docker network that the containers should be attached to.
+  # This network should also be configured to have Traefik listening on it.
+  network = "traefik"
+
   # Where the server state should be stored
   state = "./state"
 

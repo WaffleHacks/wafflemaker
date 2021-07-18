@@ -71,6 +71,7 @@ pub enum DeploymentEngine {
         connection: Connection,
         endpoint: String,
         timeout: u64,
+        network: String,
         state: PathBuf,
     },
 }
@@ -81,6 +82,7 @@ impl Default for DeploymentEngine {
             connection: Default::default(),
             endpoint: "unix:///var/run/docker.sock".into(),
             timeout: 10,
+            network: "traefik".into(),
             state: "./state".into(),
         }
     }
@@ -169,7 +171,7 @@ mod tests {
         assert_eq!(2, config.agent.workers);
 
         assert_eq!(
-            "postgres://{{username}}:{{password}}@127.0.0.1:5432/{{username}}",
+            "postgres://{{username}}:{{password}}@127.0.0.1:5432/{{database}}",
             config.dependencies.postgres
         );
         assert_eq!("redis://127.0.0.1:6379", config.dependencies.redis);
@@ -182,12 +184,14 @@ mod tests {
         let DeploymentEngine::Docker {
             connection,
             endpoint,
+            network,
             timeout,
             state,
         } = &config.deployment.engine;
         assert_eq!(&Connection::Local, connection);
         assert_eq!("unix:///var/run/docker.sock", endpoint.as_str());
         assert_eq!(&120, timeout);
+        assert_eq!("traefik", network);
         assert_eq!("./state", state.to_str().unwrap());
 
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());

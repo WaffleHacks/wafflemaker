@@ -2,14 +2,14 @@ use super::{CreateOpts, Deployer, Result};
 use crate::config::Connection;
 use async_trait::async_trait;
 use bollard::{
-    container::{Config as CreateContainerConfig, RemoveContainerOptions},
+    container::{Config as CreateContainerConfig, NetworkingConfig, RemoveContainerOptions},
     image::CreateImageOptions,
+    models::EndpointSettings,
     Docker as Bollard, API_DEFAULT_VERSION,
 };
 use futures::stream::StreamExt;
 use sled::{Config, Db, Mode};
 use std::{collections::HashMap, fs, path::Path};
-use toml::value::Index;
 use tracing::{debug, error, info, instrument};
 
 #[derive(Debug)]
@@ -17,6 +17,7 @@ pub struct Docker {
     instance: Bollard,
     domain: String,
     state: Db,
+    network: HashMap<String, EndpointSettings>,
 }
 
 impl Docker {
@@ -27,18 +28,21 @@ impl Docker {
         fields(
             connection = connection.kind(),
             endpoint = endpoint.as_ref(),
-            state = path.as_ref().to_str().unwrap()
+            state = path.as_ref().to_str().unwrap(),
+            network = network.as_ref(),
         )
     )]
-    pub fn new<S: AsRef<str>, P: AsRef<Path>>(
+    pub async fn new<S: AsRef<str>, P: AsRef<Path>>(
         connection: &Connection,
         endpoint: S,
         timeout: &u64,
         domain: String,
+        network: S,
         path: P,
     ) -> Result<Self> {
         let endpoint = endpoint.as_ref();
         let path = path.as_ref();
+        let network = network.as_ref();
 
         // Create the connection
         let instance = match connection {
@@ -77,10 +81,22 @@ impl Docker {
             .use_compression(true)
             .open()?;
 
+        // Fetch the network information
+        let network = instance.inspect_network::<&str>(network, None).await?;
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            network.name.unwrap(),
+            EndpointSettings {
+                network_id: network.id,
+                ..Default::default()
+            },
+        );
+
         Ok(Self {
             instance,
             domain,
             state,
+            network: endpoints,
         })
     }
 
@@ -162,7 +178,7 @@ impl Deployer for Docker {
                     if ports.len() >= 1 {
                         // The port specification is in the format <port>/<tcp|udp|sctp>, but we
                         // only care about the port itself, the protocol is assumed to be TCP
-                        let mut port = ports.keys().take(1).next().unwrap();
+                        let mut port = ports.keys().take(1).cloned().next().unwrap();
                         let proto_idx = port.find("/").unwrap();
                         port.truncate(proto_idx);
 
@@ -211,6 +227,9 @@ impl Deployer for Docker {
             attach_stderr: Some(true),
             attach_stdout: Some(true),
             labels: Some(labels),
+            networking_config: Some(NetworkingConfig {
+                endpoints_config: self.network.clone(),
+            }),
             ..Default::default()
         };
 

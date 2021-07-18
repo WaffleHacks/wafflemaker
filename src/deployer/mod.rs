@@ -12,24 +12,19 @@ use error::Result;
 
 static INSTANCE: OnceCell<Arc<Box<dyn Deployer>>> = OnceCell::new();
 
-/// Connect to the deployer service
-fn connect(config: &Deployment) -> Result<Box<dyn Deployer>> {
+/// Create the deployer service and test its connection
+pub async fn initialize(config: &Deployment) -> Result<()> {
     let domain = config.domain.to_owned();
     let deployer: Box<dyn Deployer> = match &config.engine {
         DeploymentEngine::Docker {
             connection,
             endpoint,
             timeout,
+            network,
             state,
-        } => Box::new(Docker::new(connection, endpoint, timeout, domain, state)?),
+        } => Box::new(Docker::new(connection, endpoint, timeout, domain, network, state).await?),
     };
 
-    Ok(deployer)
-}
-
-/// Create the deployer service and test its connection
-pub async fn initialize(config: &Deployment) -> Result<()> {
-    let deployer = connect(config)?;
     deployer.test().await?;
 
     INSTANCE.get_or_init(|| Arc::from(deployer));
