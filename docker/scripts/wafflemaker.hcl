@@ -9,8 +9,7 @@ path "database/roles/+" {
   capabilities = ["list", "create", "delete"]
   allowed_parameters = {
     "db_name" = ["postgresql"]
-    "default_ttl" = []
-    "creation_statements" = []
+    "*" = []
   }
 }
 
