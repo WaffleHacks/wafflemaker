@@ -41,8 +41,6 @@ services:
     image: wafflehacks/wafflemaker:setup
     build: ./docker
     env_file: ./.dockerenv
-    profiles:
-      - setup
     networks:
       default:
         ipv4_address: 172.96.0.64
