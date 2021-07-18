@@ -3,6 +3,8 @@ version: "3"
 services: 
   postgresql:
     image: postgres:13-alpine
+    ports:
+      - 5432:5432
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -13,6 +15,8 @@ services:
   
   vault:
     image: vault:1.7.2
+    ports:
+      - 8200:8200
     environment:
       - VAULT_DEV_ROOT_TOKEN_ID=dev-token
     cap_add: 
@@ -22,11 +26,13 @@ services:
     networks:
       default:
         ipv4_address: 172.96.0.3
-    depends_on: 
+    depends_on:
       - postgresql
 
   redis:
     image: redis:6-alpine
+    ports:
+      - 6379:6379
     networks:
       default:
         ipv4_address: 172.96.0.4
