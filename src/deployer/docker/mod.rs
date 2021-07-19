@@ -134,6 +134,12 @@ impl Deployer for Docker {
         Ok(mapping)
     }
 
+    #[instrument(skip(self))]
+    async fn service_id(&self, name: &str) -> Result<Option<String>> {
+        let tree = self.state.open_tree(name)?;
+        get_string(&tree, "id")
+    }
+
     #[instrument(
         skip(self, options),
         fields(
@@ -244,44 +250,19 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn start(&self, name: &str) -> Result<()> {
-        let id = self.id_from_name(name)?;
-        self.start_by_id(&id).await?;
-        Ok(())
-    }
-
-    #[instrument(skip(self))]
-    async fn start_by_id(&self, id: &str) -> Result<()> {
+    async fn start(&self, id: &str) -> Result<()> {
         self.instance.start_container::<&str>(&id, None).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
-    async fn stop(&self, name: &str) -> Result<()> {
-        let id = self.id_from_name(name)?;
-        self.stop_by_id(&id).await?;
-        Ok(())
-    }
-
-    #[instrument(skip(self))]
-    async fn stop_by_id(&self, id: &str) -> Result<()> {
+    async fn stop(&self, id: &str) -> Result<()> {
         self.instance.stop_container(&id, None).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
-    async fn delete(&self, name: &str) -> Result<()> {
-        let id = self.id_from_name(&name)?;
-        self.delete_by_id(&id).await?;
-
-        // Remove the state for the deployment
-        self.state.drop_tree(name)?;
-
-        Ok(())
-    }
-
-    #[instrument(skip(self))]
-    async fn delete_by_id(&self, id: &str) -> Result<()> {
+    async fn delete(&self, id: &str) -> Result<()> {
         self.instance
             .remove_container(
                 &id,
@@ -292,6 +273,17 @@ impl Deployer for Docker {
                 }),
             )
             .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self))]
+    async fn delete_by_name(&self, name: &str) -> Result<()> {
+        let id = self.id_from_name(&name)?;
+        self.delete(&id).await?;
+
+        // Remove the state for the deployment
+        self.state.drop_tree(name)?;
 
         Ok(())
     }

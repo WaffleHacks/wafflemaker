@@ -45,26 +45,23 @@ pub trait Deployer: Send + Sync {
     /// Get a map of all the registered services from the name to the id
     async fn list(&self) -> Result<HashMap<String, String>>;
 
+    /// Get a service's deployment id from its name
+    async fn service_id(&self, name: &str) -> Result<Option<String>>;
+
     /// Create a new service
     async fn create(&self, options: CreateOpts) -> Result<String>;
 
-    /// Start a service
-    async fn start(&self, name: &str) -> Result<()>;
-
     /// Start a service with its ID
-    async fn start_by_id(&self, id: &str) -> Result<()>;
-
-    /// Stop a service
-    async fn stop(&self, name: &str) -> Result<()>;
+    async fn start(&self, id: &str) -> Result<()>;
 
     /// Stop a service with its ID
-    async fn stop_by_id(&self, id: &str) -> Result<()>;
-
-    /// Delete a service
-    async fn delete(&self, name: &str) -> Result<()>;
+    async fn stop(&self, id: &str) -> Result<()>;
 
     /// Delete a service by its ID
-    async fn delete_by_id(&self, id: &str) -> Result<()>;
+    async fn delete(&self, id: &str) -> Result<()>;
+
+    /// Delete a service by its name
+    async fn delete_by_name(&self, name: &str) -> Result<()>;
 }
 
 /// Options for creating a container

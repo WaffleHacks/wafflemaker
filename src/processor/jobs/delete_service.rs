@@ -22,15 +22,19 @@ impl Job for DeleteService {
         let mut reg = REGISTRY.write().await;
         reg.remove(&self.name);
 
-        // TODO: simplify this
-        let mapping = fail!(deployer::instance().list().await);
-        let id = mapping.get(&self.name).unwrap();
+        let id = match fail!(deployer::instance().service_id(&self.name).await) {
+            Some(id) => id,
+            None => {
+                info!("deployment does not exist");
+                return;
+            }
+        };
 
-        if deployer::instance().stop(&self.name).await.is_err() {
+        if deployer::instance().stop(&id).await.is_err() {
             debug!("deployment already stopped");
         }
 
-        fail!(deployer::instance().delete(&self.name).await);
+        fail!(deployer::instance().delete_by_name(&self.name).await);
 
         fail!(vault::instance().revoke_leases(&id).await);
 
