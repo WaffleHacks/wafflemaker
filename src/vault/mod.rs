@@ -9,16 +9,13 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
-use tokio::{
-    select,
-    sync::broadcast::Receiver,
-    time::{self, Duration},
-};
+use tokio::sync::broadcast::Sender;
 use tracing::{debug, error, info, instrument};
 use url::Url;
 
 mod error;
 mod models;
+mod renewal;
 
 use error::{Error, Result};
 use models::*;
@@ -116,8 +113,8 @@ impl Vault {
 
     /// Fetch AWS credentials using the given role
     #[instrument(skip(self))]
-    pub async fn aws_credentials(&self, role: &str) -> Result<AWS> {
-        let response: BaseResponse<AWS> = self
+    pub async fn aws_credentials(&self, role: &str) -> Result<(AWS, Lease)> {
+        let response: BaseResponseWithLease<AWS> = self
             .client
             .get(format!("{}v1/aws/creds/{}", self.url, role))
             .send()
@@ -126,7 +123,7 @@ impl Vault {
             .json()
             .await?;
         info!("generated AWS credentials");
-        Ok(response.data)
+        Ok((response.data, response.lease))
     }
 
     /// List all the roles for PostgreSQL
@@ -174,8 +171,8 @@ impl Vault {
     }
 
     /// Get credentials for a static role from PostgreSQL
-    pub async fn get_database_credentials(&self, role: &str) -> Result<RoleCredentials> {
-        let response: BaseResponse<RoleCredentials> = self
+    pub async fn get_database_credentials(&self, role: &str) -> Result<(RoleCredentials, Lease)> {
+        let response: BaseResponseWithLease<RoleCredentials> = self
             .client
             .get(format!("{}v1/database/creds/{}", self.url, role))
             .send()
@@ -184,7 +181,55 @@ impl Vault {
             .json()
             .await?;
         info!("generated credentials for database user");
-        Ok(response.data)
+        Ok((response.data, response.lease))
+    }
+
+    /// Register credential leases to be renewed
+    pub async fn register_leases(&self, id: &str, new_leases: Vec<Lease>) {
+        let mut leases = renewal::LEASES.write().await;
+        leases.insert(id.to_owned(), new_leases);
+    }
+
+    /// Revoke any releases if they existed
+    pub async fn revoke_leases(&self, id: &str) -> Result<()> {
+        let revoked = {
+            let mut leases = renewal::LEASES.write().await;
+            leases.remove(id)
+        };
+
+        // Revoke any leases if the existed
+        if let Some(leases) = revoked {
+            for lease in leases {
+                self.client
+                    .put(format!("{}v1/sys/leases/revoke", self.url))
+                    .json(&LeaseRevocation {
+                        lease_id: &lease.id,
+                    })
+                    .send()
+                    .await?
+                    .error_for_status()?;
+
+                info!(id = %lease.id, "revoked lease");
+            }
+        }
+
+        info!("revoked leases for container");
+
+        Ok(())
+    }
+
+    /// Renew an individual lease for a new TTL
+    async fn renew_lease(&self, lease: &Lease) -> Result<()> {
+        self.client
+            .put(format!("{}v1/sys/leases/renew", self.url))
+            .json(&LeaseRenewal {
+                lease_id: &lease.id,
+                increment: lease.ttl,
+            })
+            .send()
+            .await?
+            .error_for_status()?;
+        Ok(())
     }
 }
 
@@ -198,7 +243,7 @@ impl Default for Vault {
 }
 
 /// Configure the vault service
-pub async fn initialize(config: &Secrets, stop: Receiver<()>) -> Result<()> {
+pub async fn initialize(config: &Secrets, stop: Sender<()>) -> Result<()> {
     let mut headers = HeaderMap::new();
     headers.insert("X-Vault-Token", HeaderValue::from_str(&config.token)?);
 
@@ -211,7 +256,8 @@ pub async fn initialize(config: &Secrets, stop: Receiver<()>) -> Result<()> {
         ))
         .build()?;
 
-    let renewal_period = config.period()?;
+    let lease_interval = config.lease_interval()?;
+    let token_interval = config.token_interval()?;
 
     let vault = Vault {
         client,
@@ -219,7 +265,13 @@ pub async fn initialize(config: &Secrets, stop: Receiver<()>) -> Result<()> {
     };
     vault.check_perms().await?;
 
-    tokio::task::spawn(renewer(renewal_period, stop));
+    // Spawn the renewal tasks
+    tokio::task::spawn(renewal::token(token_interval, stop.subscribe()));
+    tokio::task::spawn(renewal::leases(
+        lease_interval,
+        config.lease_percent,
+        stop.subscribe(),
+    ));
 
     STATIC_INSTANCE.get_or_init(|| Arc::from(vault));
     Ok(())
@@ -228,25 +280,4 @@ pub async fn initialize(config: &Secrets, stop: Receiver<()>) -> Result<()> {
 /// Retrieve an instance of Vault
 pub fn instance() -> Arc<Vault> {
     STATIC_INSTANCE.get().unwrap().clone()
-}
-
-/// Automatically renew the token every 24hr
-#[instrument]
-async fn renewer(period: Duration, mut stop: Receiver<()>) {
-    let mut interval = time::interval(period);
-
-    loop {
-        select! {
-            _ = interval.tick() => {
-                match instance().renew().await {
-                    Ok(_) => info!("successfully renewed token"),
-                    Err(e) => error!("failed to renew token: {}", e),
-                }
-            }
-            _ = stop.recv() => {
-                info!("stopping vault token renewer");
-                break
-            }
-        }
-    }
 }

@@ -126,14 +126,15 @@ pub struct Git {
 #[derive(Debug, Deserialize)]
 pub struct Secrets {
     pub address: String,
-    period: String,
+    lease_interval: String,
+    pub lease_percent: f64,
     pub token: String,
+    token_interval: String,
 }
 
 impl Secrets {
-    /// Get the period in which the token should be renewed
-    pub fn period(&self) -> Result<Duration, ParseIntError> {
-        let raw = self.period.to_lowercase();
+    fn parse_duration(raw: &str) -> Result<Duration, ParseIntError> {
+        let raw = raw.to_lowercase();
         let seconds = if let Some(time) = raw.strip_suffix("h") {
             time.parse::<u64>()? * 60 * 60
         } else if let Some(time) = raw.strip_suffix("m") {
@@ -145,6 +146,16 @@ impl Secrets {
         };
 
         Ok(Duration::new(seconds, 0))
+    }
+
+    /// How often the leases should be checked for renewal
+    pub fn lease_interval(&self) -> Result<Duration, ParseIntError> {
+        Self::parse_duration(&self.lease_interval)
+    }
+
+    /// How often the token should be renewed
+    pub fn token_interval(&self) -> Result<Duration, ParseIntError> {
+        Self::parse_duration(&self.token_interval)
     }
 }
 
@@ -198,10 +209,15 @@ mod tests {
         assert_eq!("WaffleHacks/waffles", &config.git.repository);
 
         assert_eq!("http://127.0.0.1:8200", config.secrets.address);
+        assert_eq!(
+            Duration::new(60, 0),
+            config.secrets.lease_interval().unwrap()
+        );
+        assert_eq!(0.75, config.secrets.lease_percent);
         assert_eq!("s.some-token", config.secrets.token);
         assert_eq!(
             Duration::new(60 * 60 * 24, 0),
-            config.secrets.period().unwrap()
+            config.secrets.token_interval().unwrap()
         );
 
         assert_eq!("please-change:this-token", &config.webhooks.docker);

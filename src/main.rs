@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
         .with_span_events(FmtSpan::CLOSE)
         .init();
 
-    let (stop_tx, stop_rx) = broadcast::channel(1);
+    let (stop_tx, mut stop_rx) = broadcast::channel(1);
 
     // Initialize the service registry
     registry::init().await?;
@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
     deployer::initialize(&configuration.deployment).await?;
 
     // Connect to Vault (secrets service)
-    vault::initialize(&configuration.secrets, stop_rx).await?;
+    vault::initialize(&configuration.secrets, stop_tx.clone()).await?;
 
     // Start the job processor
     processor::spawn(stop_tx.clone());
@@ -70,7 +70,6 @@ async fn main() -> Result<()> {
     let routes = http::routes().recover(http::recover).with(trace_request());
 
     // Bind the server
-    let mut stop_rx = stop_tx.subscribe();
     let (addr, server) = warp::serve(routes)
         .try_bind_with_graceful_shutdown(address, async move {
             stop_rx.recv().await.ok();

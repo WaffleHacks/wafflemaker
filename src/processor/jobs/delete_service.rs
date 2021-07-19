@@ -22,11 +22,17 @@ impl Job for DeleteService {
         let mut reg = REGISTRY.write().await;
         reg.remove(&self.name);
 
+        // TODO: simplify this
+        let mapping = fail!(deployer::instance().list().await);
+        let id = mapping.get(&self.name).unwrap();
+
         if deployer::instance().stop(&self.name).await.is_err() {
             debug!("deployment already stopped");
         }
 
         fail!(deployer::instance().delete(&self.name).await);
+
+        fail!(vault::instance().revoke_leases(&id).await);
 
         if vault::instance()
             .delete_database_role(&self.name)

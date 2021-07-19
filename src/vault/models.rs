@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 /// Create a new hash set using a macro
 macro_rules! set {
@@ -18,6 +21,14 @@ macro_rules! set {
 /// The base response for all API requests
 #[derive(Debug, Deserialize)]
 pub struct BaseResponse<T> {
+    pub data: T,
+}
+
+/// The base response for all API requests with lease information
+#[derive(Debug, Deserialize)]
+pub struct BaseResponseWithLease<T> {
+    #[serde(flatten)]
+    pub lease: Lease,
     pub data: T,
 }
 
@@ -90,7 +101,7 @@ impl<'s> DatabaseRole<'s> {
     pub fn new(role: &str) -> DatabaseRole<'s> {
         Self {
             db_name: "postgresql",
-            default_ttl: "2628000", // month in seconds
+            default_ttl: "21600", // 6hrs in seconds
             creation_statements: vec![
                 r#"CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}' INHERIT;"#.to_owned(),
                 format!(r#"GRANT {} TO "{{{{name}}}}";"#, role),
@@ -104,4 +115,33 @@ impl<'s> DatabaseRole<'s> {
 pub struct RoleCredentials {
     pub password: String,
     pub username: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Lease {
+    #[serde(rename = "lease_id")]
+    pub id: String,
+    #[serde(rename = "lease_duration")]
+    pub ttl: u64,
+    #[serde(skip, default = "now")]
+    pub updated_at: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LeaseRenewal<'l> {
+    pub lease_id: &'l str,
+    pub increment: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LeaseRevocation<'l> {
+    pub lease_id: &'l str,
+}
+
+/// Get the current unix timestamp
+fn now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
 }

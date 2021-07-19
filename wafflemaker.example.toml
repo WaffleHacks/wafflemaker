@@ -83,6 +83,18 @@
   # The address where Vault can be accessed
   address = "http://127.0.0.1:8200"
 
+  # How often to check for expiring credential leases.
+  # Supported suffixes are:
+  #   - hour: h
+  #   - minute: m
+  #   - second: s
+  # Defaults to minutes (m) if not specified or a valid prefix is not found.
+  lease_interval = "1m"
+
+  # The percent of the TTL that should be used before renewing a credential lease.
+  # Leases are checked every minute to see if they should be refreshed.
+  lease_percent = 0.75
+
   # A Vault token that has the following permissions:
   #   - create, read, update on services/data/+
   #   - list, create, delete on database/roles/+ for a database named "postgresql"
@@ -98,7 +110,7 @@
   #   - minute: m
   #   - second: s
   # Defaults to minutes (m) if not specified or a valid prefix is not found.
-  period = "24h"
+  token_interval = "24h"
 
 # Configuration for incoming webhooks
 [webhooks]

@@ -56,18 +56,23 @@ impl Job for UpdateService {
         }
         info!("loaded static environment variables");
 
-        // Load secrets into the environment
+        // Get existing secrets
         let mut static_secrets = match fail!(vault::instance().fetch_static(&self.name).await) {
             Some(s) => s,
             None => Default::default(),
         };
+
+        // Load secrets into the environment
+        let mut leases = Vec::new();
         let mut aws_creds: Option<AWS> = None;
         for (k, secret) in service.secrets.iter() {
             let value = match secret {
                 Secret::AWS { role, part } => {
                     // Retrieve the initial set of credentials if they haven't been already
                     if aws_creds.is_none() {
-                        aws_creds = Some(fail!(vault::instance().aws_credentials(role).await));
+                        let (creds, lease) = fail!(vault::instance().aws_credentials(role).await);
+                        aws_creds = Some(creds);
+                        leases.push(lease);
                     }
 
                     match part {
@@ -110,7 +115,9 @@ impl Job for UpdateService {
                 fail!(vault::instance().create_database_role(&self.name).await);
             }
 
-            let credentials = fail!(vault::instance().get_database_credentials(&self.name).await);
+            let (credentials, lease) =
+                fail!(vault::instance().get_database_credentials(&self.name).await);
+            leases.push(lease);
             let connection_url = &config
                 .dependencies
                 .postgres
@@ -150,19 +157,30 @@ impl Job for UpdateService {
         }
         let deployed = deployer::instance().start_by_id(&new_id).await;
         match (previous_id, deployed) {
-            (Some(id), Ok(_)) => fail!(deployer::instance().delete_by_id(id).await),
+            // existing deployment succeeded, cleanup old version
+            (Some(id), Ok(_)) => {
+                fail!(deployer::instance().delete_by_id(&id).await);
+                fail!(vault::instance().revoke_leases(&id).await);
+            }
+            // existing deployment failed, start old version and cleanup
             (Some(id), Err(e)) => {
                 error!(error = %e, "failed to deploy new service, restarting old version");
                 fail!(deployer::instance().start_by_id(id).await);
                 fail!(deployer::instance().delete_by_id(&new_id).await);
+                fail!(vault::instance().revoke_leases(&new_id).await);
                 return;
             }
+            // previously non-existent deployment failed, nothing to do
             (None, Err(e)) => {
                 error!(error = %e, "failed to deploy new service");
                 return;
             }
+            // previously non-existent deployment succeeded, nothing to do
             (None, Ok(_)) => {}
         }
+
+        // Save the credential leases for renewal
+        vault::instance().register_leases(&new_id, leases).await;
 
         info!("deployed with id \"{}\"", new_id);
 
