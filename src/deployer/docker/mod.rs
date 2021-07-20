@@ -3,6 +3,7 @@ use crate::config::Connection;
 use async_trait::async_trait;
 use bollard::{
     container::{Config as CreateContainerConfig, NetworkingConfig, RemoveContainerOptions},
+    errors::Error as BollardError,
     image::CreateImageOptions,
     models::EndpointSettings,
     Docker as Bollard, API_DEFAULT_VERSION,
@@ -257,19 +258,34 @@ impl Deployer for Docker {
 
     #[instrument(skip(self))]
     async fn start(&self, id: &str) -> Result<()> {
-        self.instance.start_container::<&str>(&id, None).await?;
+        let status = self.instance.start_container::<&str>(&id, None).await;
+        if let Err(e) = status {
+            if !matches!(e, BollardError::DockerResponseNotModifiedError { .. }) {
+                return Err(e.into());
+            }
+        }
         Ok(())
     }
 
     #[instrument(skip(self))]
     async fn stop(&self, id: &str) -> Result<()> {
-        self.instance.stop_container(&id, None).await?;
+        let status = self.instance.stop_container(&id, None).await;
+        if let Err(e) = status {
+            if !matches!(
+                e,
+                BollardError::DockerResponseNotFoundError { .. }
+                    | BollardError::DockerResponseNotModifiedError { .. }
+            ) {
+                return Err(e.into());
+            }
+        }
         Ok(())
     }
 
     #[instrument(skip(self))]
     async fn delete(&self, id: &str) -> Result<()> {
-        self.instance
+        let status = self
+            .instance
             .remove_container(
                 &id,
                 Some(RemoveContainerOptions {
@@ -278,7 +294,12 @@ impl Deployer for Docker {
                     force: false,
                 }),
             )
-            .await?;
+            .await;
+        if let Err(e) = status {
+            if !matches!(e, BollardError::DockerResponseNotFoundError { .. }) {
+                return Err(e.into());
+            }
+        }
 
         Ok(())
     }
