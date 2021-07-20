@@ -127,6 +127,7 @@ impl Vault {
     }
 
     /// List all the roles for PostgreSQL
+    #[instrument(skip(self))]
     pub async fn list_database_roles(&self) -> Result<Vec<String>> {
         let response = self
             .client
@@ -148,6 +149,7 @@ impl Vault {
     }
 
     /// Create a role within PostgreSQL
+    #[instrument(skip(self))]
     pub async fn create_database_role(&self, name: &str) -> Result<()> {
         self.client
             .post(format!("{}v1/database/roles/{}", self.url, name))
@@ -160,6 +162,7 @@ impl Vault {
     }
 
     /// Delete a static role from PostgreSQL
+    #[instrument(skip(self))]
     pub async fn delete_database_role(&self, name: &str) -> Result<()> {
         self.client
             .delete(format!("{}v1/database/roles/{}", self.url, name))
@@ -171,6 +174,7 @@ impl Vault {
     }
 
     /// Get credentials for a static role from PostgreSQL
+    #[instrument(skip(self))]
     pub async fn get_database_credentials(&self, role: &str) -> Result<(RoleCredentials, Lease)> {
         let response: BaseResponseWithLease<RoleCredentials> = self
             .client
@@ -191,6 +195,7 @@ impl Vault {
     }
 
     /// Revoke any releases if they existed
+    #[instrument(skip(self))]
     pub async fn revoke_leases(&self, id: &str) -> Result<()> {
         let revoked = {
             let mut leases = renewal::LEASES.write().await;
@@ -219,6 +224,7 @@ impl Vault {
     }
 
     /// Renew an individual lease for a new TTL
+    #[instrument(skip(self, lease), fields(id = %lease.id))]
     async fn renew_lease(&self, lease: &Lease) -> Result<()> {
         self.client
             .put(format!("{}v1/sys/leases/renew", self.url))

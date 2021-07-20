@@ -7,7 +7,7 @@ use bollard::{system::EventsOptions, Docker, API_DEFAULT_VERSION};
 use std::collections::HashMap;
 use tokio::{select, sync::broadcast::Receiver};
 use tokio_stream::StreamExt;
-use tracing::{debug, error, info, instrument, warn};
+use tracing::{debug, error, info, info_span, instrument, warn};
 
 /// Watch the docker events for any unexpected changes in container state
 #[instrument(skip(stop))]
@@ -24,7 +24,11 @@ pub async fn watch(mut stop: Receiver<()>) {
         _ = async {
             while let Some(event) = events.next().await {
                 let event = Event::new(event?);
-                debug!(name = %event.name(), "container state changed");
+
+                let span = info_span!("event", name = %event.name());
+                let _ = span.enter();
+
+                debug!(parent: &span, "container state changed");
 
                 let previous = last_events.get(&event.id);
 
@@ -33,10 +37,10 @@ pub async fn watch(mut stop: Receiver<()>) {
                 // and the service exited, it is assumed to be unintentional.
                 let exited_non_zero = matches!(event.action, Action::Exit { code } if code != 0);
                 if exited_non_zero && (previous.is_none() || matches!(previous, Some(event) if event != &Action::Kill)) {
-                    warn!(id = %event.id, "container exited unexpectedly");
+                    warn!(parent: &span, id = %event.id, "container exited unexpectedly");
                     match deployer::instance().start(&event.id).await {
-                        Ok(_) => info!(id = %event.id, "restarted container"),
-                        Err(e) => error!(error = %e, "failed to restart container"),
+                        Ok(_) => { info!(parent: &span, id = %event.id, "restarted container"); },
+                        Err(e) => { error!(parent: &span, error = %e, "failed to restart container"); },
                     }
                 }
 

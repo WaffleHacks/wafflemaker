@@ -9,22 +9,24 @@ use tokio::{
     sync::{broadcast::Receiver, RwLock},
     time::{self, Duration},
 };
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, error, info, info_span};
 
 pub static LEASES: Lazy<RwLock<HashMap<String, Vec<Lease>>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
 /// Automatically renew the token at the specified interval
-#[instrument(skip(stop))]
 pub async fn token(interval: Duration, mut stop: Receiver<()>) {
     let mut interval = time::interval(interval);
 
     loop {
         select! {
             _ = interval.tick() => {
+                let span = info_span!("token");
+                let _ = span.enter();
+
                 match instance().renew().await {
-                    Ok(_) => info!("successfully renewed token"),
-                    Err(e) => error!("failed to renew token: {}", e),
+                    Ok(_) => { info!(parent: &span, "successfully renewed token"); },
+                    Err(e) => { error!(parent: &span, error = %e, "failed to renew token"); },
                 }
             }
             _ = stop.recv() => {
@@ -36,13 +38,15 @@ pub async fn token(interval: Duration, mut stop: Receiver<()>) {
 }
 
 /// Automatically renew the credential leases at the specified interval
-#[instrument(skip(stop))]
 pub async fn leases(interval: Duration, max_percent: f64, mut stop: Receiver<()>) {
     let mut interval = time::interval(interval);
 
     loop {
         select! {
             _ = interval.tick() => {
+                let span = info_span!("leases");
+                let _ = span.enter();
+
                 let mut sets = LEASES.write().await;
                 let mut count = 0;
 
@@ -57,17 +61,21 @@ pub async fn leases(interval: Duration, max_percent: f64, mut stop: Receiver<()>
                                 Ok(_) => {
                                     lease.updated_at = now();
                                     count += 1;
-                                    info!(id = %lease.id, "successfully renewed lease");
+                                    info!(parent: &span, id = %lease.id, "successfully renewed lease");
                                 },
-                                Err(e) => error!(id = %lease.id, "failed to renew lease: {}", e),
+                                Err(e) => {
+                                    error!(parent: &span, id = %lease.id, error = %e, "failed to renew lease");
+                                },
                             }
                         }
-                        debug!(id = %lease.id, "checked lease for renewal");
+                        debug!(parent: &span, id = %lease.id, "checked lease for renewal");
                     }
                 }
 
                 if count > 0 {
-                    info!("successfully renewed {} leases", count);
+                    info!(parent: &span, count = count, "successfully renewed leases");
+                } else {
+                    debug!(parent: &span, "no leases needed renewal");
                 }
             }
             _ = stop.recv() => {
