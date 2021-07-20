@@ -2,6 +2,7 @@ use crate::config::{Deployment, DeploymentEngine};
 use async_trait::async_trait;
 use once_cell::sync::OnceCell;
 use std::{collections::HashMap, sync::Arc};
+use tokio::sync::broadcast::Receiver;
 
 mod docker;
 mod error;
@@ -13,7 +14,7 @@ use error::Result;
 static INSTANCE: OnceCell<Arc<Box<dyn Deployer>>> = OnceCell::new();
 
 /// Create the deployer service and test its connection
-pub async fn initialize(config: &Deployment) -> Result<()> {
+pub async fn initialize(config: &Deployment, stop: Receiver<()>) -> Result<()> {
     let domain = config.domain.to_owned();
     let deployer: Box<dyn Deployer> = match &config.engine {
         DeploymentEngine::Docker {
@@ -22,7 +23,9 @@ pub async fn initialize(config: &Deployment) -> Result<()> {
             timeout,
             network,
             state,
-        } => Box::new(Docker::new(connection, endpoint, timeout, domain, network, state).await?),
+        } => Box::new(
+            Docker::new(connection, endpoint, timeout, domain, network, state, stop).await?,
+        ),
     };
 
     deployer.test().await?;

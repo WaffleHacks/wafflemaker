@@ -10,7 +10,10 @@ use bollard::{
 use futures::stream::StreamExt;
 use sled::{Config, Db, Mode};
 use std::{collections::HashMap, fs, path::Path};
+use tokio::sync::broadcast::Receiver;
 use tracing::{debug, error, info, instrument};
+
+mod events;
 
 #[derive(Debug)]
 pub struct Docker {
@@ -39,6 +42,7 @@ impl Docker {
         domain: String,
         network: S,
         path: P,
+        stop: Receiver<()>,
     ) -> Result<Self> {
         let endpoint = endpoint.as_ref();
         let path = path.as_ref();
@@ -91,6 +95,8 @@ impl Docker {
                 ..Default::default()
             },
         );
+
+        tokio::task::spawn(events::watch(stop));
 
         Ok(Self {
             instance,

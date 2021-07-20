@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
     let repository_handle = git::initialize(&configuration.git.clone_to);
 
     // Connect to the deployment service
-    deployer::initialize(&configuration.deployment).await?;
+    deployer::initialize(&configuration.deployment, stop_tx.subscribe()).await?;
 
     // Connect to Vault (secrets service)
     vault::initialize(&configuration.secrets, stop_tx.clone()).await?;
