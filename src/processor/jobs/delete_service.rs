@@ -47,6 +47,8 @@ impl Job for DeleteService {
         }
 
         info!("successfully deleted deployment");
+
+        // TODO: create inactive deployment notification
     }
 
     fn name<'a>(&self) -> &'a str {

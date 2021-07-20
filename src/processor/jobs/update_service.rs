@@ -31,6 +31,8 @@ impl Job for UpdateService {
         let config = config::instance();
         let service = &self.config;
 
+        // TODO: create in-progress deployment notification
+
         // Update the service in the registry
         let mut reg = REGISTRY.write().await;
         reg.insert(self.name.clone(), service.clone());
@@ -190,6 +192,8 @@ impl Job for UpdateService {
                 .put_static(&self.name, static_secrets)
                 .await
         );
+
+        // TODO: mark deployment as suceeded
     }
 
     fn name<'a>(&self) -> &'a str {

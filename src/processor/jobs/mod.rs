@@ -36,6 +36,7 @@ pub trait Job: Send + Sync {
 }
 
 /// Log error and stop execution from within a job
+// TODO: notify job failed
 #[macro_export]
 macro_rules! fail {
     ($result:expr) => {

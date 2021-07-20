@@ -33,6 +33,8 @@ impl Job for PlanUpdate {
         fields(before = %self.before, after = %self.after, name = %self.name())
     )]
     async fn run(&self) {
+        // TODO: create in-progress deployment notification
+
         // Diff the deployment
         let files = fail!(
             git::instance()
@@ -90,6 +92,8 @@ impl Job for PlanUpdate {
                 }
                 _ => unreachable!(),
             }
+
+            // TODO: mark deployment as succeeded
         }
     }
 
