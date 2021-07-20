@@ -22,7 +22,7 @@ has fewer quirks and does not depend on indentation.
 
 ### Methodology
 
-When [waffles](https://github.com/WaffleHacks/waffles) gets updated, the diff is inspected, and the deployments are updated accordingly. Database credentials and secrets
+When [waffles](https://github.com/WaffleHacks/waffles) gets updated, the diff gets inspected, and the deployments get updated accordingly. Database credentials and secrets
 are provisioned automatically per container through Vault. Secrets can either be auto-generated for things like session
 tokens, or specified directly in Vault. Should a service require web access, the DNS records are
 set up through the Cloudflare API.
@@ -31,3 +31,42 @@ When an image gets updated, the deployment configs are checked to see if the ima
 then the secrets are pulled from Vault, and the environment variables are populated. The new container is then spun up, 
 and once it is stable, the old container is shutdown. If the container needs web access, the appropriate labels are 
 applied so [Traefik](https://traefik.io) can route traffic if needed.
+
+
+## Development
+
+You will need the latest version of [Rust](https://www.rust-lang.org/learn/get-started) installed, along with 
+[Docker](https://docs.docker.com/engine/install/) and [Docker Compose](https://docs.docker.com/compose/install/).
+
+You'll also need AWS credentials with at least the [recommended permissions](https://www.vaultproject.io/docs/secrets/aws#example-iam-policy-for-vault).
+These credentials will be put in a `.dockerenv` file ([example](./.dockerenv.example)).
+
+To setup your development environment, use the provided Docker compose file:
+```shell
+docker compose up --build -d
+```
+
+You'll then need to create a copy of [`wafflemaker.example.toml`](./wafflemaker.example.toml) and fill in your values:
+- dependencies.postgres = `postgres://{{username}}:{{password}}@172.96.0.2:5432/{{database}}`
+- dependencies.redis = `redis://172.96.0.4:6379`
+- deployment.network = `wafflemaker_default`
+- secrets.address = `http://172.96.0.3:8200`
+
+As for `secrets.token`, make sure you have the [Vault CLI](https://www.vaultproject.io/docs/install) installed and run the following command:
+```shell
+export VAULT_ADDR=http://127.0.0.1:8200
+export VAULT_TOKEN=dev-token
+vault token create -policy=wafflemaker -period=168h
+```
+This will generate a Vault token with the pre-created [`wafflemaker`](./docker/scripts/wafflemaker.hcl) policy.
+
+Finally, we will need to register the database with Vault. This will allow Vault to dynamically create and manage users
+within the database.
+```shell
+vault write database/config/postgresql \
+  plugin_name=postgresql-database-plugin \
+  allowed_roles="*" \
+  connection_url="postgresql://{{username}}:{{password}}@172.96.0.2:5432/postgres?sslmode=disable" \
+  username="postgres" \
+  password="postgres"
+```
