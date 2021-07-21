@@ -15,6 +15,7 @@ mod config;
 mod deployer;
 mod git;
 mod http;
+mod notifier;
 mod processor;
 mod service;
 mod vault;
@@ -62,6 +63,9 @@ async fn main() -> Result<()> {
 
     // Connect to Vault (secrets service)
     vault::initialize(&configuration.secrets, stop_tx.clone()).await?;
+
+    // Setup the notifier service
+    notifier::initialize()?;
 
     // Start the job processor
     processor::spawn(stop_tx.clone());

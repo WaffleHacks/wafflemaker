@@ -115,3 +115,4 @@ configuration/
 wafflemaker.toml
 .dockerenv
 state/
+*.pem

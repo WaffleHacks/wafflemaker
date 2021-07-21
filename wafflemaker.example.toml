@@ -73,6 +73,40 @@
   # The repository to pull configuration from
   repository = "WaffleHacks/waffles"
 
+# Configuration for notifying of deployment status
+# There are two types of notifications: service and deployment.
+# Service notifications are sent when a service is updated, deleted, deployed, or stops unexpectedly.
+# Deployment notifications are sent when a deployment plan is published.
+#
+# A notifier is enabled so long as it is configured. If you would like to disable a notifier
+# comment it out or delete it.
+[[notifiers]]
+  # The type of notifier being configured
+  # Options: (supported notifications in parentheses)
+  #   - discord (service, deployment)
+  #   - github  (deployment)
+  type = "discord"
+
+  # The URL to send webhooks to
+  webhook = "https://discord.com/api/webhooks/<id>/<key>"
+
+[[notifiers]]
+  type = "github"
+
+  ## The repository to send notifications to
+  ## Defaults to `git.repository`
+  # repository = "owner/repo"
+
+  # The ID of the installation on to the account containing the specified repository
+  installation_id = "12345678"
+
+  # The ID of the GitHub application
+  app_id = "123456"
+
+  # The private key for a GitHub app that has read-write permissions for
+  # "Commit statuses" on the desired repository.
+  key = "./github-app.private-key.pem"
+
 # Configuration for the Hashicorp Vault instance. WaffleMaker assumes
 # that the following services are enabled and properly configured on
 # the following paths:

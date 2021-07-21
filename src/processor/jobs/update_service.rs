@@ -2,7 +2,8 @@ use super::Job;
 use crate::{
     config,
     deployer::{self, CreateOpts},
-    fail,
+    fail_notify,
+    notifier::{self, Event, State},
     service::{registry::REGISTRY, AWSPart, Format, Secret, Service},
     vault::{self, AWS},
 };
@@ -28,10 +29,16 @@ impl UpdateService {
 impl Job for UpdateService {
     #[instrument(skip(self), fields(name = %self.name))]
     async fn run(&self) {
+        macro_rules! fail {
+            ($result:expr) => {
+                fail_notify!(service_update, &self.name; $result; "an error occurred while updating service");
+            };
+        }
+
         let config = config::instance();
         let service = &self.config;
 
-        // TODO: create in-progress deployment notification
+        notifier::notify(Event::service_update(&self.name, State::InProgress)).await;
 
         // Update the service in the registry
         let mut reg = REGISTRY.write().await;
@@ -185,6 +192,7 @@ impl Job for UpdateService {
         vault::instance().register_leases(&new_id, leases).await;
 
         info!("deployed with id \"{}\"", new_id);
+        notifier::notify(Event::service_update(&self.name, State::Success)).await;
 
         // Save any modifications to the static secrets
         fail!(
@@ -192,8 +200,6 @@ impl Job for UpdateService {
                 .put_static(&self.name, static_secrets)
                 .await
         );
-
-        // TODO: mark deployment as suceeded
     }
 
     fn name<'a>(&self) -> &'a str {

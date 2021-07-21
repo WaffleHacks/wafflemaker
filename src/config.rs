@@ -30,6 +30,7 @@ pub struct Config {
     pub dependencies: Dependencies,
     pub deployment: Deployment,
     pub git: Git,
+    pub notifiers: Vec<Notifier>,
     pub secrets: Secrets,
     pub webhooks: Webhooks,
 }
@@ -124,6 +125,20 @@ pub struct Git {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase", tag = "type")]
+pub enum Notifier {
+    Discord {
+        webhook: String,
+    },
+    GitHub {
+        app_id: String,
+        installation_id: String,
+        key: PathBuf,
+        repository: Option<String>,
+    },
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Secrets {
     pub address: String,
     lease_interval: String,
@@ -167,7 +182,7 @@ pub struct Webhooks {
 
 #[cfg(test)]
 mod tests {
-    use super::{instance, parse, Connection, DeploymentEngine};
+    use super::{instance, parse, Connection, DeploymentEngine, Notifier};
     use std::time::Duration;
 
     #[tokio::test]
@@ -207,6 +222,24 @@ mod tests {
 
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
         assert_eq!("WaffleHacks/waffles", &config.git.repository);
+
+        assert_eq!(2, config.notifiers.len());
+        assert!(matches!(
+            &config.notifiers[0],
+            Notifier::Discord { webhook }
+                if webhook == "https://discord.com/api/webhooks/<id>/<key>"
+        ));
+        assert!(matches!(
+            &config.notifiers[1],
+            Notifier::GitHub {
+                app_id,
+                installation_id,
+                key,
+                repository,
+            } if repository.is_none() && app_id == "123456"
+                && installation_id == "12345678"
+                && key.display().to_string() == "./github-app.private-key.pem"
+        ));
 
         assert_eq!("http://127.0.0.1:8200", config.secrets.address);
         assert_eq!(

@@ -35,38 +35,30 @@ pub trait Job: Send + Sync {
     fn name<'a>(&self) -> &'a str;
 }
 
-/// Log error and stop execution from within a job
-// TODO: notify job failed
+/// Log error and stop execution from within a job. A notification
+/// with the specified event and args will also be sent.
+///
+/// This is intended to be called from a macro within the function so extra
+/// arguments are automatically passed in.
+///
+/// **NOTE:** a status parameter is automatically added with the error.
 #[macro_export]
-macro_rules! fail {
-    ($result:expr) => {
+macro_rules! fail_notify {
+    ($event:ident , $( $arg:expr ),* ; $result:expr ; $message:expr) => {
         match $result {
             Ok(v) => v,
             Err(e) => {
-                fail!(@e e; "an error occurred while processing the job",);
-                return;
-            }
-        }
-    };
-    ($result:expr ; $message:expr) => {
-        fail!($result; $message,)
-    };
-    ($result:expr ; $fmt:expr , $( $arg:expr ),* ) => {
-        match $result {
-            Ok(v) => v,
-            Err(e) => {
-                fail!(@e e; $fmt, $( $arg, )* );
-                return;
-            }
-        }
-    };
+                use $crate::notifier::{notify, Event, State};
+                use std::error::Error;
 
-    // Internal rules for displaying the error
-    (@e $error:expr; $fmt:expr , $( $arg:expr ),* ) => {
-        use std::error::Error;
-        match $error.source() {
-            Some(e) => tracing::error!(error = %$error, source = %e, $fmt, $( $arg , )*),
-            None => tracing::error!(error = %$error, $fmt, $( $arg , )*),
+                match e.source() {
+                    Some(s) => tracing::error!(error = %e, source = %s, $message),
+                    None => tracing::error!(error = %e, $message),
+                }
+
+                notify(Event::$event( $( $arg ),*, State::Failure(e.to_string()) )).await;
+                return;
+            }
         }
     };
 }

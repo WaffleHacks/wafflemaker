@@ -1,7 +1,8 @@
 use super::{DeleteService, Job, UpdateService};
 use crate::{
-    fail,
+    fail_notify,
     git::{self, Action},
+    notifier::{self, Event, State},
     service::Service,
 };
 use async_trait::async_trait;
@@ -24,16 +25,32 @@ impl PlanUpdate {
             after: after.into(),
         }
     }
+
+    /// Convert the full `before` commit hash to a shortened version
+    fn short_before(&self) -> &str {
+        &self.before[..8]
+    }
+
+    /// Convert the full `after` commit hash to the shortened version
+    fn short_after(&self) -> &str {
+        &self.after[..8]
+    }
 }
 
 #[async_trait]
 impl Job for PlanUpdate {
     #[instrument(
         skip(self),
-        fields(before = %self.before, after = %self.after, name = %self.name())
+        fields(before = %self.short_before(), after = %self.short_after(), name = %self.name())
     )]
     async fn run(&self) {
-        // TODO: create in-progress deployment notification
+        macro_rules! fail {
+            ($result:expr) => {
+                fail_notify!(deployment, &self.after; $result; "an error occurred while planning deployment");
+            };
+        }
+
+        notifier::notify(Event::deployment(&self.after, State::InProgress)).await;
 
         // Diff the deployment
         let files = fail!(
@@ -43,6 +60,7 @@ impl Job for PlanUpdate {
         );
 
         // Spawn jobs for the changed files
+        let mut parse_failures = Vec::new();
         for diff in files {
             if diff.binary {
                 // Ignore binary files
@@ -72,9 +90,11 @@ impl Job for PlanUpdate {
                     let config = match Service::parse(self.base_path.join(&diff.path)).await {
                         Ok(c) => c,
                         Err(e) => {
+                            let displayable = diff.path.display();
+                            parse_failures.push(displayable.to_string());
                             error!(
                                 error = %e,
-                                path = %diff.path.display(),
+                                path = %displayable,
                                 "failed to parse service configuration"
                             );
                             continue;
@@ -92,9 +112,14 @@ impl Job for PlanUpdate {
                 }
                 _ => unreachable!(),
             }
-
-            // TODO: mark deployment as succeeded
         }
+
+        let state = if parse_failures.len() == 0 {
+            State::Success
+        } else {
+            State::Failure(format!("unable to parse: {}", parse_failures.join(", ")))
+        };
+        notifier::notify(Event::deployment(&self.after, state)).await;
     }
 
     fn name<'a>(&self) -> &'a str {
