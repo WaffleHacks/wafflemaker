@@ -4,6 +4,8 @@ WaffleHack's application deployment service built on [Docker](https://docker.com
 and [Vault](https://vaultproject.io), for storing application secrets. This supersedes [autodeploy](https://github.com/WaffleHacks/autodeploy), 
 fixing many of its pain points.
 
+An example service defintion can be found [here](./example-service.toml).
+
 
 ## Introduction
 
@@ -40,6 +42,11 @@ You will need the latest version of [Rust](https://www.rust-lang.org/learn/get-s
 
 You'll also need AWS credentials with at least the [recommended permissions](https://www.vaultproject.io/docs/secrets/aws#example-iam-policy-for-vault).
 These credentials will be put in a `.dockerenv` file ([example](./.dockerenv.example)).
+
+If you would like to setup GitHub and/or Discord deployment notifications, you need to get values for them as well. The 
+GitHub notifications require a GitHub application id and private key, and the ID of the installation to connect to. Directions
+to get these values can be found [here](https://docs.github.com/en/developers/apps/building-github-apps/authenticating-with-github-apps#authenticating-as-an-installation). 
+Discord notifications simply require a webhook URL which can be generated in a server's Settings under "Integrations".
 
 To setup your development environment, use the provided Docker compose file:
 ```shell
