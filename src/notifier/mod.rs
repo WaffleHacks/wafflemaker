@@ -16,7 +16,7 @@ use error::{Error, Result};
 pub use events::{Event, State};
 
 // The GitHub API previews to enable
-static GITHUB_API_PREVIEWS: &'static [&'static str; 2] = &[
+static GITHUB_API_PREVIEWS: &[&str; 2] = &[
     "application/vnd.github.ant-man-preview+json", // https://docs.github.com/rest/overview/api-previews#enhanced-deployments
     "application/vnd.github.flash-preview+json", // https://docs.github.com/rest/overview/api-previews#deployment-statuses
 ];
@@ -142,7 +142,7 @@ impl Notifier {
                     .as_ref()
                     .map(String::as_str)
                     .unwrap_or(default_repo)
-                    .split("/")
+                    .split('/')
                     .take(2)
                     .map(String::from);
                 let owner = parts.next().ok_or(Error::InvalidRepository)?;

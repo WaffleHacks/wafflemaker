@@ -188,11 +188,11 @@ impl Deployer for Docker {
                 .await?;
             if let Some(image_config) = image.config {
                 if let Some(ports) = image_config.exposed_ports {
-                    if ports.len() >= 1 {
+                    if !ports.is_empty() {
                         // The port specification is in the format <port>/<tcp|udp|sctp>, but we
                         // only care about the port itself, the protocol is assumed to be TCP
                         let mut port = ports.keys().take(1).cloned().next().unwrap();
-                        let proto_idx = port.find("/").unwrap();
+                        let proto_idx = port.find('/').unwrap();
                         port.truncate(proto_idx);
 
                         labels.insert(
@@ -200,7 +200,7 @@ impl Deployer for Docker {
                                 "traefik.http.services.{}.loadbalancer.server.port",
                                 router_name
                             ),
-                            port.to_owned(),
+                            port,
                         );
                     }
                 }

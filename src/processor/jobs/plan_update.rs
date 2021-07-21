@@ -114,7 +114,7 @@ impl Job for PlanUpdate {
             }
         }
 
-        let state = if parse_failures.len() == 0 {
+        let state = if parse_failures.is_empty() {
             State::Success
         } else {
             State::Failure(format!("unable to parse: {}", parse_failures.join(", ")))
