@@ -12,9 +12,20 @@ An example service defintion can be found [here](./example-service.toml).
 As stated above, Waffle Maker is used to automatically deploy our applications so that development can move as fast as
 possible. We use GitHub actions to build Docker images on each push. Waffle Maker receives webhook events from GitHub 
 whenever there is a push to the [waffles](https://github.com/WaffleHacks/waffles) repository, and from Docker Hub whenever an image is built.
+It also publishes its current status (planning a deployment, updating a service, and deleting a service) to GitHub
+and Discord so there is a small amount of observability.
 
 
 ### Inspiration
+
+I, [Alex](https://github.com/akrantz01), have recently become very interested in the idea of 
+[GitOps](https://www.weave.works/blog/what-is-gitops-really) and [infrastructure-as-code](https://en.wikipedia.org/wiki/Infrastructure_as_code).
+However, I have nothing at the scale necessary to run a full Kubernetes cluster, but I still wanted to implement it
+in some form or another. So this project is my take on it.
+
+> Sidenote: WaffleMaker actually implements a bit more than just GitOps. It also does some rudimentary container management
+> by restarting a container if it stops unexpectedly. I would like to expand these capabilities eventually to include
+> healthchecks and such.
 
 This project was inspired by HackGT's [Beekeeper](https://github.com/HackGT/beekeeper) and [Beehive](https://github.com/HackGT/beehive) 
 system for managing their deployments. Since we are not running at the scale of HackGT, we have no need for Kubenetes, 
