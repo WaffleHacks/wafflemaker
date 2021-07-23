@@ -1,6 +1,11 @@
 use anyhow::{Context, Result};
 use structopt::StructOpt;
-use tokio::{fs, signal, sync::broadcast, task};
+use tokio::{
+    fs,
+    signal::unix::{signal, SignalKind},
+    sync::broadcast,
+    task,
+};
 use tracing::{info, Span};
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{
@@ -85,7 +90,7 @@ async fn main() -> Result<()> {
     info!("listening on {}", addr);
 
     // Wait for shutdown
-    signal::ctrl_c()
+    wait_for_exit()
         .await
         .context("failed to listen for event")?;
     info!("signal received, shutting down...");
@@ -130,4 +135,15 @@ fn trace_request() -> Trace<impl Fn(Info) -> Span + Clone> {
 
         span
     })
+}
+
+/// Wait for a SIGINT or SIGTERM and then exit
+async fn wait_for_exit() -> Result<()> {
+    let mut int = signal(SignalKind::interrupt())?;
+    let mut term = signal(SignalKind::terminate())?;
+
+    tokio::select! {
+        _ = int.recv() => return Ok(()),
+        _ = term.recv() => return Ok(()),
+    }
 }
