@@ -202,7 +202,10 @@ impl Deployer for Docker {
                 "letsencrypt".to_string(),
             );
 
+            debug!("added routing labels");
+
             // Determine the service port
+            info!("attempting to determine service port for load balancing...");
             let image = self
                 .instance
                 .inspect_image(&format!("{}:{}", &options.image, &options.tag))
@@ -215,6 +218,8 @@ impl Deployer for Docker {
                         let mut port = ports.keys().take(1).cloned().next().unwrap();
                         let proto_idx = port.find('/').unwrap();
                         port.truncate(proto_idx);
+
+                        info!("found port {} for service", port);
 
                         labels.insert(
                             format!(
