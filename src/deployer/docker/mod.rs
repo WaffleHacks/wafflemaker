@@ -199,7 +199,7 @@ impl Deployer for Docker {
             );
             labels.insert(
                 format!("traefik.http.routers.{}.tls.certresolver", router_name),
-                "letsencrypt".to_string(),
+                "le".to_string(),
             );
 
             debug!("added routing labels");
