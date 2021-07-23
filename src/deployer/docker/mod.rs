@@ -169,6 +169,27 @@ impl Deployer for Docker {
 
         let mut labels = HashMap::new();
 
+        // Pull the image
+        info!(
+            "pulling image \"{}:{}\" from Docker Hub",
+            &options.image, &options.tag
+        );
+        let mut stream = self.instance.create_image(
+            Some(CreateImageOptions {
+                from_image: options.image.clone(),
+                tag: options.tag.clone(),
+                ..Default::default()
+            }),
+            None,
+            None,
+        );
+        while let Some(info) = stream.next().await {
+            let info = info?;
+            if let Some(message) = info.status {
+                debug!("{}", message);
+            }
+        }
+
         if let Some(domain) = &options.domain {
             // Add routing labels
             let router_name = domain.replace(".", "-");
@@ -212,27 +233,6 @@ impl Deployer for Docker {
             "traefik.enable".to_string(),
             options.domain.is_some().to_string(),
         );
-
-        // Pull the image
-        info!(
-            "pulling image \"{}:{}\" from Docker Hub",
-            &options.image, &options.tag
-        );
-        let mut stream = self.instance.create_image(
-            Some(CreateImageOptions {
-                from_image: options.image.clone(),
-                tag: options.tag.clone(),
-                ..Default::default()
-            }),
-            None,
-            None,
-        );
-        while let Some(info) = stream.next().await {
-            let info = info?;
-            if let Some(message) = info.status {
-                debug!("{}", message);
-            }
-        }
 
         let config = CreateContainerConfig {
             image: Some(format!("{}:{}", &options.image, &options.tag)),
