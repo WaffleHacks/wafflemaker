@@ -24,7 +24,7 @@ pub async fn watch(mut stop: Receiver<()>) {
         _ = async {
             while let Some(event) = events.next().await {
                 let event = Event::new(event?);
-                if !event.useful() {
+                if matches!(event.action, Action::OutOfScope) {
                     continue;
                 }
 
@@ -139,13 +139,6 @@ impl Action {
             _ => unreachable!(),
         }
     }
-
-    fn useful(&self) -> bool {
-        match self {
-            Self::OutOfScope => false,
-            _ => true,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -167,9 +160,5 @@ impl Event {
 
     fn name(&self) -> &str {
         self.action.name()
-    }
-
-    fn useful(&self) -> bool {
-        self.action.useful()
     }
 }

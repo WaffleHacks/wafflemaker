@@ -143,7 +143,7 @@ async fn wait_for_exit() -> Result<()> {
     let mut term = signal(SignalKind::terminate())?;
 
     tokio::select! {
-        _ = int.recv() => return Ok(()),
-        _ = term.recv() => return Ok(()),
+        _ = int.recv() => Ok(()),
+        _ = term.recv() => Ok(()),
     }
 }
