@@ -24,6 +24,9 @@ pub async fn watch(mut stop: Receiver<()>) {
         _ = async {
             while let Some(event) = events.next().await {
                 let event = Event::new(event?);
+                if !event.useful() {
+                    continue;
+                }
 
                 let span = info_span!("event", name = %event.name());
                 let _ = span.enter();
@@ -107,7 +110,7 @@ enum Action {
     Kill,
     Start,
     Stop,
-    OutOfScope { name: String },
+    OutOfScope,
 }
 
 impl Action {
@@ -121,7 +124,7 @@ impl Action {
             "kill" => Self::Kill,
             "start" => Self::Start,
             "stop" => Self::Stop,
-            _ => Self::OutOfScope { name }, // Any events we don't care about
+            _ => Self::OutOfScope, // Any events we don't care about
         }
     }
 
@@ -133,7 +136,14 @@ impl Action {
             Self::Kill => "kill",
             Self::Start => "start",
             Self::Stop => "stop",
-            Self::OutOfScope { name } => name,
+            _ => unreachable!(),
+        }
+    }
+
+    fn useful(&self) -> bool {
+        match self {
+            Self::OutOfScope => false,
+            _ => true,
         }
     }
 }
@@ -157,5 +167,9 @@ impl Event {
 
     fn name(&self) -> &str {
         self.action.name()
+    }
+
+    fn useful(&self) -> bool {
+        self.action.useful()
     }
 }
