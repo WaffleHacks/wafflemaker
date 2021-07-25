@@ -42,14 +42,14 @@ impl DynamicDependency {
         &'v self,
         default_env: &'v str,
         default_role: &'v str,
-    ) -> Option<ResolvedDependency<'v, 'v>> {
+    ) -> Option<ResolvedDependency<'v>> {
         let (name, role) = match self {
             Self::Rename(name) => (name.as_str(), default_role),
             Self::Role {
                 name: variable,
                 role,
             } => {
-                let env = variable.as_ref().map(|s| s.as_str()).unwrap_or(default_env);
+                let env = variable.as_ref().map(String::as_str).unwrap_or(default_env);
                 (env, role.as_str())
             }
             Self::State(true) => (default_env, default_role),
@@ -68,13 +68,13 @@ impl Default for DynamicDependency {
 /// The collapsed version of a `DynamicDependency` that has a value for both the
 /// name and role, whether they are the default or not.
 #[derive(Debug, PartialEq)]
-pub struct ResolvedDependency<'name, 'role> {
-    pub name: &'name str,
-    pub role: &'role str,
+pub struct ResolvedDependency<'value> {
+    pub name: &'value str,
+    pub role: &'value str,
 }
 
-impl<'n, 'r> ResolvedDependency<'n, 'r> {
-    pub(crate) fn new<N, R>(name: &'n N, role: &'r R) -> ResolvedDependency<'n, 'r>
+impl<'v> ResolvedDependency<'v> {
+    pub(crate) fn new<N, R>(name: &'v N, role: &'v R) -> ResolvedDependency<'v>
     where
         N: AsRef<str> + ?Sized,
         R: AsRef<str> + ?Sized,

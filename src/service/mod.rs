@@ -55,7 +55,7 @@ pub struct Dependencies {
 }
 
 impl Dependencies {
-    pub fn postgres<'v>(&'v self, default_role: &'v str) -> Option<ResolvedDependency<'v, 'v>> {
+    pub fn postgres<'v>(&'v self, default_role: &'v str) -> Option<ResolvedDependency<'v>> {
         self.postgres.resolve("POSTGRES_URL", default_role)
     }
 
