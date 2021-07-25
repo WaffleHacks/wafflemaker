@@ -1,0 +1,228 @@
+openapi: 3.1.0
+info:
+  title: WaffleMaker API
+  description: The deployment abstraction layer for WaffleHacks
+  version: 0.1.1
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: The default address for the public API
+
+paths:
+  /health:
+    get:
+      summary: Check the health status
+      description: Checks whether WaffleMaker is running and able to serve requests.
+      responses:
+        '204':
+          description: The server is up and able to serve requests
+
+  /docker:
+    post:
+      summary: DockerHub webhook receiver
+      description: |
+        Receives a notification from DockerHub that a new image was pushed and
+        checks if any currently running services should be updated. There is
+        no indication of how many services were updated returned by the endpoint.
+        Once the endpoint returns a response, the services (if any) will begin
+        updating.
+      security:
+        - BasicAuth: []
+      requestBody:
+        description: |
+          The webhook body from DockerHub. While the actual webhook from DockerHub is
+          larger than what is shown here, these are the only fields that are required.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DockerHub"
+            example:
+              push_data:
+                tag: master
+              callback_url: https://registry.hub.docker.com/u/user/project/hook/0123456789abcdef
+              repository:
+                repo_name: wafflehacks/cms
+      responses:
+        '204':
+          description: The webhook was successfully processed and any updates were queued.
+        '400':
+          description: The request body could not be parsed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: 400
+                message: bad request
+        '401':
+          description: The authorization header was invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: 401
+                message: unauthorized
+        '413':
+          description: The request body was greater than 64 kilobytes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: 413
+                message: payload too large
+
+  /github:
+    post:
+      summary: GitHub webhook receiver
+      description: |
+        Recieves a notification from GitHub that a new push (or ping) was made to the
+        source repository. It then pulls the configuration from the repository and
+        does a `git diff` between the last commit and the current commit. The result
+        of the `git diff` is used to determine what services to create/update and what
+        services to delete.
+      security:
+        - GitHubSignature: []
+      requestBody:
+        description: |
+          The webhook body for a push or a ping event from GitHub. While the actual webhooks
+          from GitHub are much larger than what is shown here, these are the only fields that
+          are required.
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/GitHubPing"
+                - $ref: "#/components/schemas/GitHubPush"
+            examples:
+              Push:
+                value:
+                  ref: refs/heads/master
+                  before: 786ef0fae1096bd1fc01c0c6fc096c9bec37835b
+                  after: 4dcf707e09590bdeba222af4d891ae1e49f0d38a
+                  repository:
+                    full_name: WaffleHacks/waffles
+                    clone_url: https://github.com/WaffleHacks/waffles.git
+              Ping:
+                value:
+                  zen: Non-blocking is better than blocking.
+                  hook_id: 30
+      responses:
+        '204':
+          description: The webhook was successfully processesd and a plan was queued.
+        '400':
+          description: The request body could not be parsed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: 400
+                message: bad request
+        '401':
+          description: The request signature was invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: 401
+                message: unauthorized
+        '403':
+          description: The repository is not allowed to be cloned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: 403
+                message: forbidden
+        '413':
+          description: The request body was greater than 64 kilobytes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: 413
+                message: payload too large
+
+components:
+  schemas:
+    Error:
+      type: object
+      description: A generic error message
+      properties:
+        code:
+          type: integer
+          description: The HTTP status code
+        message:
+          type: string
+          description: A simplified message for why the error occurred
+    DockerHub:
+      type: object
+      description: A simplified webhook request from DockerHub
+      properties:
+        push_data:
+          type: object
+          properties:
+            tag:
+              type: string
+              description: The tag that got pushed
+        callback_url:
+          type: string
+          description: The callback URL for the webhook
+        repository:
+          type: object
+          properties:
+            repo_name:
+              type: string
+              description: The repository the tag got pushed to
+    GitHubPing:
+      type: object
+      description: A simplified ping event from GitHub
+      properties:
+        zen:
+          type: string
+          description: A short quote from GitHub
+        hook_id:
+          type: integer
+          description: The ID of the webhook sending the request
+    GitHubPush:
+      type: object
+      description: A simplified push event from GitHub
+      properties:
+        ref:
+          type: string
+          description: A git refspec for the commit
+        before:
+          type: string
+          description: The latest commit prior to the push
+        after:
+          type: string
+          description: The latest commit after the push
+        repository:
+          type: object
+          properties:
+            full_name:
+              type: string
+              description: The full name of the repository
+            clone_url:
+              type: string
+              description: The URL that gets used to pull/clone the repository
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+      description: The username and password as defined in the configuration file
+    GitHubSignature:
+      type: apiKey
+      in: header
+      name: X-Hub-Signature-256
+      description: |
+        A SHA-256 HMAC hex digest of the body combined with a secret
+        key as defined in the configuration file. The header value must
+        be prefixed with `sha256=`.
