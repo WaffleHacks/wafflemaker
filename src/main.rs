@@ -6,12 +6,9 @@ use tokio::{
     sync::broadcast,
     task,
 };
-use tracing::{info, Span};
+use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
-use warp::{
-    trace::{trace, Info, Trace},
-    Filter,
-};
+use warp::Filter;
 
 use args::Args;
 
