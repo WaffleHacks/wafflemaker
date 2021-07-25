@@ -22,3 +22,13 @@ path "database/creds/+" {
 path "aws/creds/+" {
   capabilities = ["read"]
 }
+
+
+# Allow renewing and revoking leases
+path "sys/leases/renew" {
+  capabilities = ["update"]
+}
+
+path "sys/leases/renew" {
+  capabilities = ["update"]
+}
