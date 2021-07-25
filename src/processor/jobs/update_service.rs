@@ -117,25 +117,28 @@ impl Job for UpdateService {
         }
         info!("loaded secrets from vault into environment");
 
-        if let Some(name) = service.dependencies.postgres() {
+        if let Some(postgres) = service.dependencies.postgres(&self.name) {
             // Create the role if it doesn't exist
             let roles = fail!(vault::instance().list_database_roles().await);
-            if !roles.contains(&self.name) {
-                fail!(vault::instance().create_database_role(&self.name).await);
+            if !roles.contains(&postgres.name.to_owned()) {
+                fail!(vault::instance().create_database_role(postgres.role).await);
             }
 
-            let (credentials, lease) =
-                fail!(vault::instance().get_database_credentials(&self.name).await);
+            let (credentials, lease) = fail!(
+                vault::instance()
+                    .get_database_credentials(postgres.role)
+                    .await
+            );
             leases.push(lease);
             let connection_url = &config
                 .dependencies
                 .postgres
                 .replace("{{username}}", &credentials.username)
                 .replace("{{password}}", &credentials.password)
-                .replace("{{database}}", &self.name);
+                .replace("{{database}}", postgres.role);
 
-            options = options.environment(name.to_uppercase(), connection_url);
-            debug!(name = %name, "added postgres database url");
+            options = options.environment(postgres.name.to_uppercase(), connection_url);
+            debug!(name = %postgres.name, "added postgres database url");
         }
         if let Some(name) = service.dependencies.redis() {
             options = options.environment(name.to_uppercase(), &config.dependencies.redis);

@@ -5,9 +5,11 @@ use serde_with::{serde_as, DisplayFromStr, NoneAsEmptyString};
 use std::{collections::HashMap, ffi::OsStr, path::Path};
 use tokio::fs;
 
+mod dependency;
 pub mod registry;
 mod secret;
 
+use dependency::*;
 pub use secret::{Format, Part as AWSPart, Secret};
 
 /// The configuration for a service
@@ -33,10 +35,8 @@ impl Service {
 
     /// Generate the name of a service from its file path
     pub fn name(path: &Path) -> String {
-        let repo_path = path
-            .strip_prefix(&config::instance().git.clone_to)
-            .unwrap_or(path);
-        repo_path
+        path.strip_prefix(&config::instance().git.clone_to)
+            .unwrap_or(path)
             .with_extension("")
             .iter()
             .rev()
@@ -50,43 +50,17 @@ impl Service {
 /// All the possible external dependencies a service can require.
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct Dependencies {
-    postgres: Option<Dependency>,
-    redis: Option<Dependency>,
+    postgres: DynamicDependency,
+    redis: SimpleDependency,
 }
 
 impl Dependencies {
-    pub fn postgres(&self) -> Option<&str> {
-        self.postgres
-            .as_ref()
-            .map(|d| d.resolve("POSTGRES_URL"))
-            .flatten()
+    pub fn postgres<'v>(&'v self, default_role: &'v str) -> Option<ResolvedDependency<'v>> {
+        self.postgres.resolve("POSTGRES_URL", default_role)
     }
 
     pub fn redis(&self) -> Option<&str> {
-        self.redis
-            .as_ref()
-            .map(|d| d.resolve("REDIS_URL"))
-            .flatten()
-    }
-}
-
-/// The definition of a dependency service. `State` specifies whether it is enabled
-/// or disabled, and `Rename` specifies the environment variables name and implicitly
-/// enables it.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum Dependency {
-    State(bool),
-    Rename(String),
-}
-
-impl Dependency {
-    pub fn resolve<'n>(&'n self, default: &'n str) -> Option<&'n str> {
-        match self {
-            Self::Rename(name) => Some(&name),
-            Self::State(true) => Some(default),
-            Self::State(false) => None,
-        }
+        self.redis.resolve("REDIS_URL")
     }
 }
 
@@ -165,6 +139,7 @@ fn default_true() -> bool {
 #[cfg(test)]
 mod tests {
     use super::Service;
+    use crate::service::dependency::ResolvedDependency;
 
     #[tokio::test]
     async fn deserialize() {
@@ -172,7 +147,10 @@ mod tests {
             .await
             .expect("failed to parse service");
 
-        assert_eq!(service.dependencies.postgres(), Some("DATABASE_URL"));
+        assert_eq!(
+            service.dependencies.postgres("testing"),
+            Some(ResolvedDependency::new("DATABASE_URL", "testing"))
+        );
         assert_eq!(service.dependencies.redis(), None);
         assert_eq!(service.docker.image, "wafflehacks/cms");
         assert_eq!(service.docker.tag, "develop");
@@ -190,7 +168,7 @@ mod tests {
             .await
             .expect("failed to parse service");
 
-        assert_eq!(service.dependencies.postgres(), None);
+        assert_eq!(service.dependencies.postgres("testing"), None);
         assert_eq!(service.dependencies.redis(), None);
         assert_eq!(service.docker.image, "wafflehacks/cms");
         assert_eq!(service.docker.tag, "develop");
