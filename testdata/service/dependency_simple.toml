@@ -1,0 +1,7 @@
+###
+### NOTE: this is not a valid configuration file, it is just for testing
+###
+
+state_false = false
+state_true = true
+rename = "simple"
