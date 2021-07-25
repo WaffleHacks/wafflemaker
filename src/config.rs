@@ -30,6 +30,7 @@ pub struct Config {
     pub dependencies: Dependencies,
     pub deployment: Deployment,
     pub git: Git,
+    pub management: Management,
     pub notifiers: Vec<Notifier>,
     pub secrets: Secrets,
     pub webhooks: Webhooks,
@@ -122,6 +123,13 @@ impl Connection {
 pub struct Git {
     pub clone_to: PathBuf,
     pub repository: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Management {
+    pub enabled: bool,
+    pub address: SocketAddr,
+    pub token: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -222,6 +230,10 @@ mod tests {
 
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
         assert_eq!("WaffleHacks/waffles", &config.git.repository);
+
+        assert!(config.management.enabled);
+        assert_eq!("127.0.0.1:8001", &config.management.address.to_string());
+        assert_eq!("please-change-me", config.management.token);
 
         assert_eq!(2, config.notifiers.len());
         assert!(matches!(
