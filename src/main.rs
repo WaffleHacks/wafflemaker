@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
     processor::spawn(stop_tx.clone());
 
     // Setup the routes
-    let routes = http::routes().recover(http::recover).with(trace_request());
+    let routes = http::routes().recover(http::recover);
 
     // Bind the server
     let (addr, server) = warp::serve(routes)
@@ -104,37 +104,6 @@ async fn main() -> Result<()> {
 
     info!("successfully shutdown, good bye!");
     Ok(())
-}
-
-/// Wrap the request with some information allowing it
-/// to be traced through the logs. Built off of the
-/// `warp::trace::request` implementation
-fn trace_request() -> Trace<impl Fn(Info) -> Span + Clone> {
-    use tracing::field::{display, Empty};
-
-    trace(|info: Info| {
-        let span = tracing::info_span!(
-            "request",
-            remote.addr = Empty,
-            method = %info.method(),
-            path = %info.path(),
-            version = ?info.version(),
-            referrer = Empty,
-            id = %uuid::Uuid::new_v4(),
-        );
-
-        // Record optional fields
-        if let Some(remote_addr) = info.remote_addr() {
-            span.record("remote.addr", &display(remote_addr));
-        }
-        if let Some(referrer) = info.referer() {
-            span.record("referrer", &display(referrer));
-        }
-
-        tracing::debug!(parent: &span, "received request");
-
-        span
-    })
 }
 
 /// Wait for a SIGINT or SIGTERM and then exit
