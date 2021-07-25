@@ -47,32 +47,11 @@ paths:
         '204':
           description: The webhook was successfully processed and any updates were queued.
         '400':
-          description: The request body could not be parsed.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              example:
-                code: 400
-                message: bad request
+          $ref: "#/components/responses/BadRequest"
         '401':
-          description: The authorization header was invalid.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              example:
-                code: 401
-                message: unauthorized
+          $ref: "#/components/responses/Unauthorized"
         '413':
-          description: The request body was greater than 64 kilobytes
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              example:
-                code: 413
-                message: payload too large
+          $ref: "#/components/responses/RequestTooLarge"
 
   /github:
     post:
@@ -114,23 +93,9 @@ paths:
         '204':
           description: The webhook was successfully processesd and a plan was queued.
         '400':
-          description: The request body could not be parsed.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              example:
-                code: 400
-                message: bad request
+          $ref: "#/components/responses/BadRequest"
         '401':
-          description: The request signature was invalid.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              example:
-                code: 401
-                message: unauthorized
+          $ref: "#/components/responses/Unauthorized"
         '403':
           description: The repository is not allowed to be cloned.
           content:
@@ -141,16 +106,37 @@ paths:
                 code: 403
                 message: forbidden
         '413':
-          description: The request body was greater than 64 kilobytes
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              example:
-                code: 413
-                message: payload too large
+          $ref: "#/components/responses/RequestTooLarge"
 
 components:
+  responses:
+    BadRequest:
+      description: The request body could not be parsed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 400
+            message: bad request
+    RequestTooLarge:
+      description: The request body was greater than 64 kilobytes
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 413
+            message: payload too large
+    Unauthorized:
+      description: The authorization header was invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 401
+            message: unauthorized
   schemas:
     Error:
       type: object
