@@ -17,6 +17,7 @@ mod config;
 mod deployer;
 mod git;
 mod http;
+mod management;
 mod notifier;
 mod processor;
 mod service;
@@ -71,6 +72,9 @@ async fn main() -> Result<()> {
 
     // Start the job processor
     processor::spawn(stop_tx.clone());
+
+    // Start the management interface
+    management::start(stop_tx.clone())?;
 
     // Setup the routes
     let routes = http::routes().recover(http::recover);
