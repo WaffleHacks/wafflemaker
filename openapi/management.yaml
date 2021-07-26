@@ -49,9 +49,13 @@ paths:
                   services:
                     type: integer
                     description: The number of services currently deployed
+                  running:
+                    type: integer
+                    description: The number of services currently running
               example:
                 commit: 4dcf707e09590bdeba222af4d891ae1e49f0d38a
                 services: 3
+                running: 2
         '401':
           $ref: "#/components/responses/Unauthorized"
     post:

@@ -1,6 +1,6 @@
 use super::{
     diff::{self, DiffFile},
-    pull, Result,
+    head, pull, Result,
 };
 use git2::Repository;
 use std::{
@@ -65,6 +65,11 @@ fn handle_call(repo: &Repository, method: Method, tx: oneshot::Sender<Return>) {
             tx.send(Return::Pull(result))
                 .expect("failed to send on channel");
         }
+        Method::Head => {
+            let result = head::run(repo);
+            tx.send(Return::Head(result))
+                .expect("failed to send on channel");
+        }
         _ => unreachable!(),
     }
 }
@@ -72,6 +77,7 @@ fn handle_call(repo: &Repository, method: Method, tx: oneshot::Sender<Return>) {
 /// The methods and their arguments that can be called
 #[derive(Debug)]
 pub enum Method {
+    Head,
     Pull(String, String, String),
     Diff(String, String),
     Shutdown,
@@ -80,6 +86,7 @@ pub enum Method {
 impl Method {
     pub fn name(&self) -> &str {
         match self {
+            Self::Head => "head",
             Self::Pull(_, _, _) => "pull",
             Self::Diff(_, _) => "diff",
             Self::Shutdown => "shutdown",
@@ -90,6 +97,7 @@ impl Method {
 /// The return types corresponding to each method
 #[derive(Debug)]
 pub enum Return {
+    Head(Result<String>),
     Pull(Result<()>),
     Diff(Result<Vec<DiffFile>>),
 }
