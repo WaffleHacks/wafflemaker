@@ -1,52 +1,14 @@
-use tracing::{info, Span};
-use warp::{
-    http::StatusCode,
-    trace::{trace, Info, Trace},
-    Filter, Rejection, Reply,
-};
+use tracing::Span;
+use warp::trace::{trace, Info, Trace};
 
 mod errors;
-mod handlers;
-mod webhooks;
 
-pub use errors::recover;
-
-/// Build the routes for the API
-pub fn routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    // Docker webhook route
-    let docker = warp::path("docker")
-        .and(warp::post())
-        .and(warp::body::content_length_limit(1024 * 64))
-        .and(warp::body::json())
-        .and(warp::header::<String>("Authorization"))
-        .and_then(handlers::docker)
-        .with(named_trace("docker"));
-
-    // Github webhook route
-    let github = warp::path("github")
-        .and(warp::post())
-        .and(warp::body::content_length_limit(1024 * 64))
-        .and(warp::body::bytes())
-        .and(warp::header::<String>("X-Hub-Signature-256"))
-        .and_then(handlers::github)
-        .with(named_trace("docker"));
-
-    // Health check route
-    let health = warp::path("health")
-        .and(warp::get())
-        .map(|| {
-            info!("alive and healthy!");
-            StatusCode::NO_CONTENT
-        })
-        .with(named_trace("health"));
-
-    docker.or(github).or(health)
-}
+pub use errors::*;
 
 /// Wrap the request with some information allowing it
 /// to be traced through the logs. Built off of the
 /// `warp::trace::request` implementation
-fn named_trace(name: &'static str) -> Trace<impl Fn(Info) -> Span + Clone> {
+pub fn named_trace(name: &'static str) -> Trace<impl Fn(Info) -> Span + Clone> {
     use tracing::field::{display, Empty};
 
     trace(move |info: Info| {

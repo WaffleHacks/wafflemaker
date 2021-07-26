@@ -22,6 +22,7 @@ mod notifier;
 mod processor;
 mod service;
 mod vault;
+mod webhooks;
 
 use service::registry;
 
@@ -77,7 +78,7 @@ async fn main() -> Result<()> {
     management::start(stop_tx.clone())?;
 
     // Setup the routes
-    let routes = http::routes().recover(http::recover);
+    let routes = webhooks::routes().recover(http::recover);
 
     // Bind the server
     let (addr, server) = warp::serve(routes)
