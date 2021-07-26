@@ -1,0 +1,509 @@
+openapi: 3.1.0
+info:
+  title: WaffleMaker Management API
+  description: The management API for the deployment abstraction layer for WaffleHacks
+  version: 0.1.1
+
+servers:
+  - url: http://127.0.0.1:8001
+    description: The default address for the management API
+
+# Routes:
+#  - /deployment
+#    - GET -> get the most recently deployed version
+#    - POST -> retry a deployment given the before commit hash
+#  - /leases
+#    - GET -> retrieve all the currently tracked leases
+#    - PUT -> add a lease to track
+#    - DELETE -> remove a lease by id (not index)
+#  - /services
+#    - GET -> get all the currently registered services
+#    - /:name
+#      - GET -> get the details of a service
+#      - PUT -> redeploy using the current version on disk
+#      - DELETE -> delete a service
+#      - /secrets
+#        - GET -> test getting the secrets for a service
+
+security:
+  - TokenAuth: []
+
+paths:
+  /deployments:
+    get:
+      summary: Get the most recently deployed version
+      description: Get the commit hash of the most recently deployed version and some simple statistics.
+      tags:
+        - Deployments
+      responses:
+        '200':
+          description: Successfully got deployment information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commit:
+                    type: string
+                    description: The currently deployed commit
+                  services:
+                    type: integer
+                    description: The number of services currently deployed
+              example:
+                commit: 4dcf707e09590bdeba222af4d891ae1e49f0d38a
+                services: 3
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      summary: Re-run a deployment
+      description: |
+        Re-run a deployment given the commit hash of the before state. This is needed as a `git diff`
+        is used to determine what needs to be created/updated and what needs to be deleted.
+      tags:
+        - Deployments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                before:
+                  type: string
+                  description: The before commit hash to use when computing the diff.
+            example:
+              before: 786ef0fae1096bd1fc01c0c6fc096c9bec37835b
+      responses:
+        '204':
+          description: The deployment was successfully queued
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '413':
+          $ref: "#/components/responses/RequestTooLarge"
+
+  /leases:
+    get:
+      summary: Get all the currently registered leases
+      description: Get a map of services to the leases that are currently registered with it and being renewed.
+      tags:
+        - Leases
+      responses:
+        '200':
+          description: Successfully got all the leases
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A map of a service's name to an array of its leases.
+                additionalProperties:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Lease"
+              example:
+                cms:
+                  - id: aws/creds/cms/IGWxs95BK1KbxiVH
+                    ttl: 21600
+                    updated_at: 1627252555
+                  - id: database/creds/cms/yOw6mverq8HiWXWO
+                    ttl: 21600
+                    updated_at: 1627252555
+                mailgunner:
+                  - id: database/creds/mailgunner/gMny2PUvX1z25GI6
+                    ttl: 1600
+                    updated_at: 1627252674
+                  - id: aws/creds/mailgunner/QnAa5ClzQzWt7WCS
+                    ttl: 1600
+                    updated_at: 1627252674
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      summary: Add a lease to track
+      description: |
+        Register a new lease with a service to be renewed and managed by its lifecycle. When the
+        service it is registered to gets deleted, the lease will be revoked as well.
+      tags:
+        - Leases
+      requestBody:
+        description: The new lease details and service name
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lease:
+                  $ref: "#/components/schemas/Lease"
+                service:
+                  type: string
+                  description: The name of the service
+            example:
+              service: cms
+              lease:
+                id: database/creds/cms/yOw6mverq8HiWXWO
+                ttl: 21600
+                updated_at: 1627252555
+      responses:
+        '204':
+          description: The lease was successfully registered with the service
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '413':
+          $ref: "#/components/responses/RequestTooLarge"
+    delete:
+      summary: Stop tracking a lease
+      description: |
+        Removes a lease by its full ID from a particular service, preventing it from being
+        renewed or managed by the service's lifecycle. Does not error if a particular lease
+        cannot be found.
+      tags:
+        - Leases
+      parameters:
+        - in: query
+          name: id
+          required: true
+          description: The name of the lease to delete
+          schema:
+            type: string
+          example: database/creds/cms/yOw6mverq8HiWXWO
+        - in: query
+          name: service
+          required: true
+          description: The service to delete the lease from
+          schema:
+            type: string
+          example: cms
+      responses:
+        '204':
+          description: The lease was successfully removed
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+
+  /services:
+    get:
+      summary: Get the deployed services
+      description: |
+        Get a list of all the deployed services. While the services are deployed, they are
+        not necessarily running as an error could have occurred while deploying or the underlying
+        container was manually stopped.
+      tags:
+        - Services
+      responses:
+        '200':
+          description: A list of the deployed services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: The name of a service
+              example:
+                - cms
+                - mailgunner
+                - hackathon-manager
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+
+  /service/{name}:
+    get:
+      summary: Get details about a service
+      description: |
+        Get the configuration for a service as WaffleMaker sees it and the id of the container running it.
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: The name of the service
+      tags:
+        - Services
+      responses:
+        '200':
+          description: Successfully got a service's information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  config:
+                    $ref: "#/components/schemas/Service"
+                  deployment_id:
+                    type: string
+                    description: The ID of the service within the deployer
+                    example: a9b76f566826914892fbf92d9205a1a127013b60d40fe539e246cfa46aeafa56
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '404':
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Re-deploy a service
+      description: Re-deploy a service using the current configuration stored on disk
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: The name of the service
+      tags:
+        - Services
+      responses:
+        '204':
+          description: Successfully queued a service update job
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '404':
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a service
+      description: |
+        Remove a service's currently running deployment (if any). Does not modify any state in the source repository.
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: The name of the service
+      tags:
+        - Services
+      responses:
+        '204':
+          description: Successfully queued a service delete job
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '404':
+          $ref: "#/components/responses/NotFound"
+
+  /services/{name}/secrets:
+    get:
+      summary: Get a service's secrets
+      description:
+        Test getting the secrets for a service. By default, all secrets are invalidated before being
+        sent back to the requester.
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: The name of the service
+        - in: query
+          name: invalidate
+          schema:
+            type: boolean
+          required: false
+          description: Whether to invalidate the secrets
+      tags:
+        - Services
+      responses:
+        '200':
+          description: Successfully retrieved the secrets
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A map of secret name to value
+                additionalProperties:
+                  type: string
+              example:
+                aws: AKID...
+                generated: nXWC5cvGsTz3Eu9o
+                load: some-value
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '404':
+          $ref: "#/components/responses/NotFound"
+
+components:
+  responses:
+    BadRequest:
+      description: The request body could not be parsed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 400
+            message: bad request
+    NotFound:
+      description: The service could not be found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 404
+            message: not found
+    RequestTooLarge:
+      description: The request body was greater than 64 kilobytes
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 413
+            message: payload too large
+    Unauthorized:
+      description: The management token was invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 401
+            message: unauthorized
+  schemas:
+    Error:
+      type: object
+      description: A generic error message
+      properties:
+        code:
+          type: integer
+          description: The HTTP status code
+        message:
+          type: string
+          description: A simplified message for why the error occurred
+    Lease:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The ID of the lease within Vault
+        ttl:
+          type: integer
+          description: How long the lease is valid for
+        updated_at:
+          type: integer
+          description: When the lease was last updated (renewed or created)
+    Service:
+      type: object
+      description: The service's configuration
+      properties:
+        dependencies:
+          type: object
+          properties:
+            postgres:
+              oneOf:
+                - type: boolean
+                  description: Whether to enable the dependency
+                - type: string
+                  description: A different name for the environment variable
+                - type: object
+                  properties:
+                    role:
+                      type: string
+                      description: The role to pull database credentials as
+                    name:
+                      type: string
+                      description: A different name for the environment varible
+            redis:
+              oneOf:
+                - type: boolean
+                  description: Whether to enable the dependency
+                - type: string
+                  description: A different name for the environment variable
+        docker:
+          type: object
+          properties:
+            image:
+              type: string
+              description: A reference to a Docker image (without the tag)
+              example: wafflehacks/cms
+            tag:
+              type: string
+              description: The tag for a Docker image
+              example: latest
+            update:
+              type: object
+              properties:
+                additional_tags:
+                  type: array
+                  items:
+                    type: string
+                    description: A tag that is allowed to update a service (supporting globs)
+                  example: [sha-*, develop]
+                automatic:
+                  type: boolean
+                  description: Whether the service is allowed to be automatically updated
+                  example: true
+        environment:
+          type: object
+          description: A map of static environment variables
+          additionalProperties:
+            type: string
+          example:
+            db_type: pg
+            email_transport: mailgun
+        secrets:
+          type: object
+          additionalProperties:
+            oneOf:
+              - $ref: "#/components/schemas/ServiceAWSSecret"
+              - $ref: "#/components/schemas/ServiceGenerateSecret"
+              - type: string
+                enum: [load]
+                description: Load the secret from Vault
+          example:
+            aws:
+              role: cms
+              part: access
+            generated:
+              format: hex
+              length: 48
+              regenerate: false
+            loaded: load
+
+        web:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              description: Whether the container is accessible from the web
+              example: true
+            base:
+              type: string
+              description: The base domain for the subdomain
+              example: wafflehacks.tech
+    ServiceAWSSecret:
+      type: object
+      description: An AWS credentials secret
+      properties:
+        role:
+          type: string
+          description: The permissions for credentials to have
+        part:
+          type: string
+          description: Which part of the AWS credential to store in the environment variable
+          enum:
+            - access
+            - secret
+    ServiceGenerateSecret:
+      type: object
+      description: A generated secret
+      properties:
+        format:
+          type: string
+          description: The format to generate the secret in
+          enum:
+            - alphanumeric
+            - base64
+            - hex
+        length:
+          type: integer
+          description: How long the generated value should be
+        regenerate:
+          type: boolean
+          description: Whether the secret should be re-generated on a service update
+  securitySchemes:
+    TokenAuth:
+      type: http
+      scheme: bearer
+      description: The management API authentication token as defined in the configuration file.
