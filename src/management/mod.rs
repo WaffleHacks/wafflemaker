@@ -1,4 +1,7 @@
-use super::config;
+use crate::{
+    config,
+    http::{recover, AuthorizationError},
+};
 use tokio::sync::broadcast::Sender;
 use tokio::task;
 use tracing::{info, instrument};
@@ -15,7 +18,9 @@ pub fn start(stop_tx: Sender<()>) -> Result<(), Error> {
     }
 
     // Build the routes
-    let routes = authentication(&config.token).and(warp::path("test").map(|| "test"));
+    let routes = authentication(&config.token)
+        .and(warp::path("test").map(|| "test"))
+        .recover(recover);
     let (address, server) =
         warp::serve(routes).try_bind_with_graceful_shutdown(config.address, async move {
             stop_tx.subscribe().recv().await.ok();
@@ -34,15 +39,13 @@ fn authentication(
 ) -> impl Filter<Extract = (), Error = Rejection> + Copy {
     warp::header::<String>("Authorization")
         .and_then(move |header: String| async move {
-            let token = header
-                .strip_prefix("Bearer")
-                .ok_or(warp::reject::not_found())?; // TODO: better errors
-
-            if token != expected_token {
-                Err(warp::reject::not_found()) // TODO: better errors
-            } else {
-                Ok(())
+            if let Some(token) = header.strip_prefix("Bearer ") {
+                if token == expected_token {
+                    return Ok(());
+                }
             }
+
+            Err(Rejection::from(AuthorizationError))
         })
         .untuple_one()
 }
