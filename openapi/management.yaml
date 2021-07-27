@@ -100,26 +100,38 @@ paths:
             application/json:
               schema:
                 type: object
-                description: A map of a service's name to an array of its leases.
-                additionalProperties:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/Lease"
+                properties:
+                  leases:
+                    type: object
+                    description: A map of a deployment's ID to an array of its leases.
+                    additionalProperties:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Lease"
+                  services:
+                    type: object
+                    description: A map of service names to deployment IDs
+                    additionalProperties:
+                      type: string
               example:
-                cms:
-                  - id: aws/creds/cms/IGWxs95BK1KbxiVH
-                    ttl: 21600
-                    updated_at: 1627252555
-                  - id: database/creds/cms/yOw6mverq8HiWXWO
-                    ttl: 21600
-                    updated_at: 1627252555
-                mailgunner:
-                  - id: database/creds/mailgunner/gMny2PUvX1z25GI6
-                    ttl: 1600
-                    updated_at: 1627252674
-                  - id: aws/creds/mailgunner/QnAa5ClzQzWt7WCS
-                    ttl: 1600
-                    updated_at: 1627252674
+                leases:
+                  697bc5723aceb9a76bfb4cad9d9d2842b245059cbd000b36be1e81c902ef6378:
+                    - lease_id: aws/creds/cms/IGWxs95BK1KbxiVH
+                      lease_duration: 21600
+                      updated_at: 1627252555
+                    - lease_id: database/creds/cms/yOw6mverq8HiWXWO
+                      lease_duration: 21600
+                      updated_at: 1627252555
+                  6c0aa53040b383fd1301d34d99c28fbad61001976c483cc6a498eaecbc49a9c7:
+                    - lease_id: database/creds/mailgunner/gMny2PUvX1z25GI6
+                      lease_duration: 1600
+                      updated_at: 1627252674
+                    - lease_id: aws/creds/mailgunner/QnAa5ClzQzWt7WCS
+                      lease_duration: 1600
+                      updated_at: 1627252674
+                services:
+                  cms: 697bc5723aceb9a76bfb4cad9d9d2842b245059cbd000b36be1e81c902ef6378
+                  mailgunner: 6c0aa53040b383fd1301d34d99c28fbad61001976c483cc6a498eaecbc49a9c7
         '401':
           $ref: "#/components/responses/Unauthorized"
     put:
@@ -146,8 +158,8 @@ paths:
             example:
               service: cms
               lease:
-                id: database/creds/cms/yOw6mverq8HiWXWO
-                ttl: 21600
+                lease_id: database/creds/cms/yOw6mverq8HiWXWO
+                lease_duration: 21600
                 updated_at: 1627252555
       responses:
         '204':
