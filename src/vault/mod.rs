@@ -20,7 +20,8 @@ mod renewal;
 use error::{Error, Result};
 use models::*;
 
-pub use models::AWS;
+pub use models::{Lease, AWS};
+pub use renewal::LEASES;
 
 static STATIC_INSTANCE: OnceCell<Arc<Vault>> = OnceCell::new();
 
@@ -208,13 +209,13 @@ impl Vault {
                 self.client
                     .put(format!("{}v1/sys/leases/revoke", self.url))
                     .json(&LeaseRevocation {
-                        lease_id: &lease.id,
+                        lease_id: &lease.lease_id,
                     })
                     .send()
                     .await?
                     .error_for_status()?;
 
-                info!(id = %lease.id, "revoked lease");
+                info!(id = %lease.lease_id, "revoked lease");
             }
         }
 
@@ -224,13 +225,13 @@ impl Vault {
     }
 
     /// Renew an individual lease for a new TTL
-    #[instrument(skip(self, lease), fields(id = %lease.id))]
+    #[instrument(skip(self, lease), fields(id = %lease.lease_id))]
     async fn renew_lease(&self, lease: &Lease) -> Result<()> {
         self.client
             .put(format!("{}v1/sys/leases/renew", self.url))
             .json(&LeaseRenewal {
-                lease_id: &lease.id,
-                increment: lease.ttl,
+                lease_id: &lease.lease_id,
+                increment: lease.lease_duration,
             })
             .send()
             .await?

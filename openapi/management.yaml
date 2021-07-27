@@ -126,7 +126,8 @@ paths:
       summary: Add a lease to track
       description: |
         Register a new lease with a service to be renewed and managed by its lifecycle. When the
-        service it is registered to gets deleted, the lease will be revoked as well.
+        service it is registered to gets deleted, the lease will be revoked as well. If no deployments
+        exist for the specified service, the lease will not be tracked.
       tags:
         - Leases
       requestBody:
@@ -377,11 +378,13 @@ components:
           description: A simplified message for why the error occurred
     Lease:
       type: object
+      # See src/vault/models.rs#120 for why the `lease_id` and `lease_duration`
+      # fields are not DRY.
       properties:
-        id:
+        lease_id:
           type: string
           description: The ID of the lease within Vault
-        ttl:
+        lease_duration:
           type: integer
           description: How long the lease is valid for
         updated_at:

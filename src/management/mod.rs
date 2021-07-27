@@ -8,6 +8,7 @@ use tracing::{info, instrument};
 use warp::{Error, Filter, Rejection};
 
 mod deployments;
+mod leases;
 
 /// Start the management interface
 #[instrument(skip(stop_tx))]
@@ -20,7 +21,7 @@ pub fn start(stop_tx: Sender<()>) -> Result<(), Error> {
     }
 
     // Build the routes
-    let routes = deployments::routes();
+    let routes = deployments::routes().or(leases::routes());
     let with_middleware = warp::any()
         .and(authentication(&config.token).and(routes))
         .recover(recover);
