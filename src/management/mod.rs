@@ -9,6 +9,7 @@ use warp::{Error, Filter, Rejection};
 
 mod deployments;
 mod leases;
+mod services;
 
 /// Start the management interface
 #[instrument(skip(stop_tx))]
@@ -21,7 +22,9 @@ pub fn start(stop_tx: Sender<()>) -> Result<(), Error> {
     }
 
     // Build the routes
-    let routes = deployments::routes().or(leases::routes());
+    let routes = deployments::routes()
+        .or(leases::routes())
+        .or(services::routes());
     let with_middleware = warp::any()
         .and(authentication(&config.token).and(routes))
         .recover(recover);

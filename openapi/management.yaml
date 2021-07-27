@@ -253,6 +253,7 @@ paths:
                     $ref: "#/components/schemas/Service"
                   deployment_id:
                     type: string
+                    nullable: true
                     description: The ID of the service within the deployer
                     example: a9b76f566826914892fbf92d9205a1a127013b60d40fe539e246cfa46aeafa56
         '401':
@@ -296,8 +297,6 @@ paths:
           description: Successfully queued a service delete job
         '401':
           $ref: "#/components/responses/Unauthorized"
-        '404':
-          $ref: "#/components/responses/NotFound"
 
   /services/{name}/secrets:
     get:
