@@ -6,8 +6,9 @@ use reqwest::{
 use structopt::StructOpt;
 
 mod args;
+mod commands;
 
-use args::Args;
+use args::{Args, Command};
 
 fn main() -> Result<()> {
     // Setup traceback
@@ -35,7 +36,13 @@ fn main() -> Result<()> {
         .build()
         .wrap_err("failed to build client")?;
 
-    println!("{:?}", cli);
+    // Run the desired command
+    match cli.cmd {
+        Command::Add(_) => {}
+        Command::Delete(_) => {}
+        Command::Get(_) => {}
+        Command::Run(_) => {}
+    }
 
     Ok(())
 }
