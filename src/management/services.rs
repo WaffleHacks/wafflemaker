@@ -51,7 +51,7 @@ struct Response<'c> {
 /// Get the configuration for a service
 async fn get(service: String) -> Result<impl Reply, Rejection> {
     let reg = REGISTRY.read().await;
-    let config = reg.get(&service).ok_or(warp::reject::not_found())?;
+    let config = reg.get(&service).ok_or_else(warp::reject::not_found)?;
 
     let deployment_id = deployer::instance().service_id(&service).await?;
 
@@ -64,7 +64,7 @@ async fn get(service: String) -> Result<impl Reply, Rejection> {
 /// Re-deploy a service
 async fn redeploy(service: String) -> Result<impl Reply, Rejection> {
     let reg = REGISTRY.read().await;
-    let config = reg.get(&service).ok_or(warp::reject::not_found())?;
+    let config = reg.get(&service).ok_or_else(warp::reject::not_found)?;
 
     jobs::dispatch(UpdateService::new(config.clone(), service));
 
