@@ -1,4 +1,4 @@
-use structopt::StructOpt;
+use super::*;
 
 // wafflectl delete <lease {id} {service}|service {name}>
 #[derive(Debug, StructOpt)]
@@ -23,4 +23,11 @@ pub enum DeleteSubcommand {
         /// The name of the service
         name: String,
     },
+}
+
+impl DeleteSubcommand {
+    /// Handle the subcommand call
+    pub fn handle(self, client: Client, url: Url) -> Result<()> {
+        todo!()
+    }
 }

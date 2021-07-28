@@ -26,7 +26,7 @@ fn main() -> Result<()> {
         map.insert(AUTHORIZATION, HeaderValue::from_str(&cli.token)?);
         map
     };
-    let _client = Client::builder()
+    let client = Client::builder()
         .default_headers(headers)
         .user_agent(format!(
             "{}/{}",
@@ -38,10 +38,10 @@ fn main() -> Result<()> {
 
     // Run the desired command
     match cli.cmd {
-        Command::Add(_) => {}
-        Command::Delete(_) => {}
-        Command::Get(_) => {}
-        Command::Run(_) => {}
+        Command::Add(sub) => sub.handle(client, cli.address)?,
+        Command::Delete(sub) => sub.handle(client, cli.address)?,
+        Command::Get(sub) => sub.handle(client, cli.address)?,
+        Command::Run(sub) => sub.handle(client, cli.address)?,
     }
 
     Ok(())

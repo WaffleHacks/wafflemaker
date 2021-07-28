@@ -1,4 +1,4 @@
-use structopt::StructOpt;
+use super::*;
 
 // wafflectl get <deployments|leases|services|service {name}>
 #[derive(Debug, StructOpt)]
@@ -27,4 +27,11 @@ pub enum GetSubcommand {
         /// The name of the service
         name: String,
     },
+}
+
+impl GetSubcommand {
+    /// Handle the subcommand call
+    pub fn handle(self, client: Client, url: Url) -> Result<()> {
+        todo!()
+    }
 }

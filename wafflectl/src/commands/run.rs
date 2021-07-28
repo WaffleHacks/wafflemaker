@@ -1,4 +1,4 @@
-use structopt::StructOpt;
+use super::*;
 
 // wafflectl run <deployment {commit}|service {name}>
 #[derive(Debug, StructOpt)]
@@ -18,4 +18,11 @@ pub enum RunSubcommand {
         /// The name of the service
         name: String,
     },
+}
+
+impl RunSubcommand {
+    /// Handle the subcommand call
+    pub fn handle(self, client: Client, url: Url) -> Result<()> {
+        todo!()
+    }
 }

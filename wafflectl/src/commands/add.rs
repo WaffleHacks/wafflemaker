@@ -1,4 +1,4 @@
-use structopt::StructOpt;
+use super::*;
 
 // wafflectl add lease {service} {id} {ttl} [last updated]
 #[derive(Debug, StructOpt)]
@@ -19,4 +19,11 @@ pub enum AddSubcommand {
         /// When the lease was last updated, defaults to now
         updated_at: Option<u64>,
     },
+}
+
+impl AddSubcommand {
+    /// Handle the subcommand call
+    pub fn handle(self, client: Client, url: Url) -> Result<()> {
+        todo!()
+    }
 }
