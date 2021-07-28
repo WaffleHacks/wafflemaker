@@ -1,4 +1,8 @@
 use eyre::{Result, WrapErr};
+use reqwest::{
+    blocking::Client,
+    header::{HeaderMap, HeaderValue, AUTHORIZATION},
+};
 use structopt::StructOpt;
 
 mod args;
@@ -14,6 +18,23 @@ fn main() -> Result<()> {
 
     // Parse the CLI
     let cli = Args::from_args();
+
+    // Build the HTTP client
+    let headers = {
+        let mut map = HeaderMap::new();
+        map.insert(AUTHORIZATION, HeaderValue::from_str(&cli.token)?);
+        map
+    };
+    let _client = Client::builder()
+        .default_headers(headers)
+        .user_agent(format!(
+            "{}/{}",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION")
+        ))
+        .build()
+        .wrap_err("failed to build client")?;
+
     println!("{:?}", cli);
 
     Ok(())
