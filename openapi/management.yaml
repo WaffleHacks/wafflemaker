@@ -8,23 +8,6 @@ servers:
   - url: http://127.0.0.1:8001
     description: The default address for the management API
 
-# Routes:
-#  - /deployment
-#    - GET -> get the most recently deployed version
-#    - POST -> retry a deployment given the before commit hash
-#  - /leases
-#    - GET -> retrieve all the currently tracked leases
-#    - PUT -> add a lease to track
-#    - DELETE -> remove a lease by id (not index)
-#  - /services
-#    - GET -> get all the currently registered services
-#    - /:name
-#      - GET -> get the details of a service
-#      - PUT -> redeploy using the current version on disk
-#      - DELETE -> delete a service
-#      - /secrets
-#        - GET -> test getting the secrets for a service
-
 security:
   - TokenAuth: []
 
@@ -297,46 +280,6 @@ paths:
           description: Successfully queued a service delete job
         '401':
           $ref: "#/components/responses/Unauthorized"
-
-  /services/{name}/secrets:
-    get:
-      summary: Get a service's secrets
-      description:
-        Test getting the secrets for a service. By default, all secrets are invalidated before being
-        sent back to the requester.
-      parameters:
-        - in: path
-          name: name
-          schema:
-            type: string
-          required: true
-          description: The name of the service
-        - in: query
-          name: invalidate
-          schema:
-            type: boolean
-          required: false
-          description: Whether to invalidate the secrets
-      tags:
-        - Services
-      responses:
-        '200':
-          description: Successfully retrieved the secrets
-          content:
-            application/json:
-              schema:
-                type: object
-                description: A map of secret name to value
-                additionalProperties:
-                  type: string
-              example:
-                aws: AKID...
-                generated: nXWC5cvGsTz3Eu9o
-                load: some-value
-        '401':
-          $ref: "#/components/responses/Unauthorized"
-        '404':
-          $ref: "#/components/responses/NotFound"
 
 components:
   responses:
