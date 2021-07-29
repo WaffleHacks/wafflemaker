@@ -4,7 +4,7 @@ use crate::{
     processor::jobs::{self, PlanUpdate},
     service::registry::REGISTRY,
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use warp::http::StatusCode;
 use warp::{Filter, Rejection, Reply};
 
@@ -12,9 +12,9 @@ use warp::{Filter, Rejection, Reply};
 pub fn routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let get = warp::get().and_then(get).with(named_trace("get"));
 
-    let post = warp::post()
-        .and(warp::body::content_length_limit(1024 * 8))
-        .and(warp::body::json())
+    let post = warp::put()
+        .and(warp::path::param())
+        .and(warp::path::end())
         .and_then(rerun)
         .with(named_trace("rerun"));
 
@@ -45,17 +45,12 @@ async fn get() -> Result<impl Reply, Rejection> {
     }))
 }
 
-#[derive(Debug, Deserialize)]
-struct Body {
-    before: String,
-}
-
 /// Re-run a deployment given the commit hash of the before state
-async fn rerun(body: Body) -> Result<impl Reply, Rejection> {
+async fn rerun(before: String) -> Result<impl Reply, Rejection> {
     let current = git::instance().head().await.map_err(GitError)?;
 
     let path = &config::instance().git.clone_to;
-    jobs::dispatch(PlanUpdate::new(path, body.before, current));
+    jobs::dispatch(PlanUpdate::new(path, before, current));
 
     Ok(StatusCode::NO_CONTENT)
 }

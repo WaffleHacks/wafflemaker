@@ -41,30 +41,24 @@ paths:
                 running: 2
         '401':
           $ref: "#/components/responses/Unauthorized"
-    post:
+    put:
       summary: Re-run a deployment
       description: |
         Re-run a deployment given the commit hash of the before state. This is needed as a `git diff`
         is used to determine what needs to be created/updated and what needs to be deleted.
       tags:
         - Deployments
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                before:
-                  type: string
-                  description: The before commit hash to use when computing the diff.
-            example:
-              before: 786ef0fae1096bd1fc01c0c6fc096c9bec37835b
+      parameters:
+        - in: path
+          name: before
+          schema:
+            type: string
+          required: true
+          example: 786ef0fae1096bd1fc01c0c6fc096c9bec37835b
+          description: The before commit hash to use when computing the diff.
       responses:
         '204':
           description: The deployment was successfully queued
-        '400':
-          $ref: "#/components/responses/BadRequest"
         '401':
           $ref: "#/components/responses/Unauthorized"
         '413':
