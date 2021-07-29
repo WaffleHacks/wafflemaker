@@ -22,7 +22,7 @@ pub enum RunSubcommand {
 
 impl RunSubcommand {
     /// Handle the subcommand call
-    pub fn handle(self, client: Client, url: Url) -> Result<()> {
+    pub fn handle(self, client: Client, url: Url) -> Result<Table> {
         todo!()
     }
 }

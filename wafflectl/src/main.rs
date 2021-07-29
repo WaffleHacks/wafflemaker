@@ -4,6 +4,7 @@ use reqwest::{
     header::{HeaderMap, HeaderValue, AUTHORIZATION},
 };
 use structopt::StructOpt;
+use tabled::Style;
 
 mod args;
 mod commands;
@@ -23,7 +24,10 @@ fn main() -> Result<()> {
     // Build the HTTP client
     let headers = {
         let mut map = HeaderMap::new();
-        map.insert(AUTHORIZATION, HeaderValue::from_str(&cli.token)?);
+        map.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", &cli.token))?,
+        );
         map
     };
     let client = Client::builder()
@@ -37,12 +41,14 @@ fn main() -> Result<()> {
         .wrap_err("failed to build client")?;
 
     // Run the desired command
-    match cli.cmd {
+    let content = match cli.cmd {
         Command::Add(sub) => sub.handle(client, cli.address)?,
         Command::Delete(sub) => sub.handle(client, cli.address)?,
         Command::Get(sub) => sub.handle(client, cli.address)?,
         Command::Run(sub) => sub.handle(client, cli.address)?,
-    }
+    };
+
+    println!("{}", content.with(Style::psql()));
 
     Ok(())
 }

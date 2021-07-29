@@ -1128,6 +1128,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2386b4ebe91c2f7f51082d4cefa145d030e33a1842a96b12e4885cc3c01f7a55"
 
 [[package]]
+name = "papergrid"
+version = "0.1.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "117aab6154bbd707e4cca766c7df1d3d247f3bf3052a76709583713c356d6baf"
+dependencies = [
+ "unicode-width",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1703,6 +1712,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "tabled"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78e44c818a29312cb5f5b9b38aa72b37ad31b687dd32c5c50e737cc9f0385f20"
+dependencies = [
+ "papergrid",
+ "tabled_derive",
+]
+
+[[package]]
+name = "tabled_derive"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "295be2fd92b0c382818e4c5271594cd5232651ef3826c4e9963f204113eccec0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "textwrap"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2032,7 +2062,9 @@ dependencies = [
  "color-eyre",
  "eyre",
  "reqwest",
+ "serde",
  "structopt",
+ "tabled",
  "url",
 ]
 

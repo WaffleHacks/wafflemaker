@@ -31,7 +31,7 @@ pub enum GetSubcommand {
 
 impl GetSubcommand {
     /// Handle the subcommand call
-    pub fn handle(self, client: Client, url: Url) -> Result<()> {
+    pub fn handle(self, client: Client, mut url: Url) -> Result<Table> {
         todo!()
     }
 }

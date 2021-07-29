@@ -1,6 +1,8 @@
 use eyre::Result;
 use reqwest::blocking::Client;
+use serde::Deserialize;
 use structopt::StructOpt;
+use tabled::{Table, Tabled};
 use url::Url;
 
 mod add;
