@@ -1,16 +1,12 @@
 use eyre::{Result, WrapErr};
-use reqwest::{
-    blocking::Client,
-    header::{HeaderMap, HeaderValue, AUTHORIZATION},
-};
 use structopt::StructOpt;
-use tabled::Style;
+use tabled::{Alignment, Indent, Modify, Row, Style};
 
 mod args;
 mod commands;
+mod http;
 
-use args::{Args, Command};
-use commands::Subcommand;
+use args::Args;
 
 fn main() -> Result<()> {
     // Setup traceback
@@ -23,26 +19,17 @@ fn main() -> Result<()> {
     let cli = Args::from_args();
 
     // Build the HTTP client
-    let headers = {
-        let mut map = HeaderMap::new();
-        map.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {}", &cli.token))?,
-        );
-        map
-    };
-    let client = Client::builder()
-        .default_headers(headers)
-        .user_agent(format!(
-            "{}/{}",
-            env!("CARGO_PKG_NAME"),
-            env!("CARGO_PKG_VERSION")
-        ))
-        .build()
-        .wrap_err("failed to build client")?;
+    let client = http::Client::new(cli.address, &cli.token).wrap_err("failed to build client")?;
 
-    let content = cli.cmd.subcommand().execute(client, cli.address)?;
-    println!("{}", content.with(Style::psql()));
+    let content = cli.cmd.subcommand().execute(client)?;
+    println!(
+        "{}",
+        content.with(Style::psql()).with(
+            Modify::new(Row(1..))
+                .with(Alignment::left())
+                .with(Indent::new(1, 1, 0, 0))
+        )
+    );
 
     Ok(())
 }

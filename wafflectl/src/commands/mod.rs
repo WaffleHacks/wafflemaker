@@ -1,9 +1,8 @@
+use crate::http::Client;
 use eyre::Result;
-use reqwest::blocking::Client;
 use serde::Deserialize;
 use structopt::StructOpt;
 use tabled::{Table, Tabled};
-use url::Url;
 
 mod add;
 mod delete;
@@ -16,5 +15,5 @@ pub use get::Get;
 pub use run::Run;
 
 pub trait Subcommand {
-    fn execute(&self, client: Client, url: Url) -> Result<Table>;
+    fn execute(&self, client: Client) -> Result<Table>;
 }

@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::HashMap;
 
 // wafflectl get <deployments|leases|services|service {name}>
 #[derive(Debug, StructOpt)]
@@ -31,7 +32,7 @@ pub enum Get {
 
 impl Subcommand for Get {
     /// Handle the subcommand call
-    fn execute(&self, client: Client, mut url: Url) -> Result<Table> {
+    fn execute(&self, client: Client) -> Result<Table> {
         todo!()
     }
 }
