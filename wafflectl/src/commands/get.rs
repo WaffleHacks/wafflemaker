@@ -1,5 +1,6 @@
 use super::*;
 use std::collections::HashMap;
+use tabled::{Disable, Header};
 
 // wafflectl get <deployments|leases|services|service {name}>
 #[derive(Debug, StructOpt)]
@@ -33,6 +34,66 @@ pub enum Get {
 impl Subcommand for Get {
     /// Handle the subcommand call
     fn execute(&self, client: Client) -> Result<Table> {
-        todo!()
+        let table = match self {
+            Self::Deployments => {
+                let response: DeploymentsResponse = client.get(&["deployments"])?;
+                Table::new(&[response])
+            }
+            Self::Leases => {
+                let response: LeasesResponse = client.get(&["leases"])?;
+                Table::new(&response.into_table())
+            }
+            Self::Services => {
+                let response: Vec<String> = client.get(&["services"])?;
+                Table::new(response)
+                    .with(Header("services"))
+                    .with(Disable::Row(1..=1))
+            }
+            Self::Service { name } => todo!(),
+        };
+
+        Ok(table)
+    }
+}
+
+#[derive(Deserialize, Tabled)]
+struct DeploymentsResponse {
+    commit: String,
+    services: u64,
+    running: u64,
+}
+
+#[derive(Deserialize, Tabled)]
+struct Lease {
+    #[serde(skip)]
+    service: String,
+    #[serde(rename = "lease_id")]
+    id: String,
+    #[serde(rename = "lease_duration")]
+    duration: u64,
+    updated_at: u64,
+}
+
+#[derive(Deserialize)]
+struct LeasesResponse {
+    leases: HashMap<String, Vec<Lease>>,
+    services: HashMap<String, String>,
+}
+
+impl LeasesResponse {
+    /// Convert the response into a format that can be a table
+    fn into_table(mut self) -> Vec<Lease> {
+        let mut table = Vec::new();
+
+        for (service, container) in self.services {
+            if let Some(mut leases) = self.leases.remove(&container) {
+                while let Some(mut lease) = leases.pop() {
+                    lease.service = service.clone();
+                    table.push(lease);
+                }
+            }
+        }
+
+        table
     }
 }
