@@ -10,7 +10,11 @@ mod delete;
 mod get;
 mod run;
 
-pub use add::AddSubcommand;
-pub use delete::DeleteSubcommand;
-pub use get::GetSubcommand;
-pub use run::RunSubcommand;
+pub use add::Add;
+pub use delete::Delete;
+pub use get::Get;
+pub use run::Run;
+
+pub trait Subcommand {
+    fn execute(&self, client: Client, url: Url) -> Result<Table>;
+}

@@ -2,7 +2,7 @@ use super::*;
 
 // wafflectl get <deployments|leases|services|service {name}>
 #[derive(Debug, StructOpt)]
-pub enum GetSubcommand {
+pub enum Get {
     /// Get the most recently deployed version
     ///
     /// Gets the commit hash of the most recently deployed version
@@ -29,9 +29,9 @@ pub enum GetSubcommand {
     },
 }
 
-impl GetSubcommand {
+impl Subcommand for Get {
     /// Handle the subcommand call
-    pub fn handle(self, client: Client, mut url: Url) -> Result<Table> {
+    fn execute(&self, client: Client, mut url: Url) -> Result<Table> {
         todo!()
     }
 }

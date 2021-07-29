@@ -2,7 +2,7 @@ use super::*;
 
 // wafflectl delete <lease {id} {service}|service {name}>
 #[derive(Debug, StructOpt)]
-pub enum DeleteSubcommand {
+pub enum Delete {
     /// Stop tracking a lease
     ///
     /// Removes a lease by its full ID from a particular service,
@@ -25,9 +25,9 @@ pub enum DeleteSubcommand {
     },
 }
 
-impl DeleteSubcommand {
+impl Subcommand for Delete {
     /// Handle the subcommand call
-    pub fn handle(self, client: Client, url: Url) -> Result<Table> {
+    fn execute(&self, client: Client, url: Url) -> Result<Table> {
         todo!()
     }
 }

@@ -2,7 +2,7 @@ use super::*;
 
 // wafflectl run <deployment {commit}|service {name}>
 #[derive(Debug, StructOpt)]
-pub enum RunSubcommand {
+pub enum Run {
     /// Run a deployment
     ///
     /// Run a deployment given the commit hash of the before
@@ -20,9 +20,9 @@ pub enum RunSubcommand {
     },
 }
 
-impl RunSubcommand {
+impl Subcommand for Run {
     /// Handle the subcommand call
-    pub fn handle(self, client: Client, url: Url) -> Result<Table> {
+    fn execute(&self, client: Client, url: Url) -> Result<Table> {
         todo!()
     }
 }

@@ -10,6 +10,7 @@ mod args;
 mod commands;
 
 use args::{Args, Command};
+use commands::Subcommand;
 
 fn main() -> Result<()> {
     // Setup traceback
@@ -40,14 +41,7 @@ fn main() -> Result<()> {
         .build()
         .wrap_err("failed to build client")?;
 
-    // Run the desired command
-    let content = match cli.cmd {
-        Command::Add(sub) => sub.handle(client, cli.address)?,
-        Command::Delete(sub) => sub.handle(client, cli.address)?,
-        Command::Get(sub) => sub.handle(client, cli.address)?,
-        Command::Run(sub) => sub.handle(client, cli.address)?,
-    };
-
+    let content = cli.cmd.subcommand().execute(client, cli.address)?;
     println!("{}", content.with(Style::psql()));
 
     Ok(())

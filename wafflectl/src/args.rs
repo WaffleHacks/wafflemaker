@@ -1,4 +1,4 @@
-use super::commands;
+use super::commands::{self, Subcommand};
 use structopt::StructOpt;
 use url::Url;
 
@@ -27,11 +27,22 @@ pub struct Args {
 #[derive(Debug, StructOpt)]
 pub enum Command {
     /// Add an instance of an object
-    Add(commands::AddSubcommand),
+    Add(commands::Add),
     /// Delete an object
-    Delete(commands::DeleteSubcommand),
+    Delete(commands::Delete),
     /// Get details about an object
-    Get(commands::GetSubcommand),
+    Get(commands::Get),
     /// Run an object
-    Run(commands::RunSubcommand),
+    Run(commands::Run),
+}
+
+impl Command {
+    pub fn subcommand(self) -> Box<dyn Subcommand> {
+        match self {
+            Self::Add(s) => Box::new(s),
+            Self::Delete(s) => Box::new(s),
+            Self::Get(s) => Box::new(s),
+            Self::Run(s) => Box::new(s),
+        }
+    }
 }

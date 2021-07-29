@@ -2,7 +2,7 @@ use super::*;
 
 // wafflectl add lease {service} {id} {ttl} [last updated]
 #[derive(Debug, StructOpt)]
-pub enum AddSubcommand {
+pub enum Add {
     /// Add a lease to track
     ///
     /// When the service it is registered with gets deleted, the lease will
@@ -21,9 +21,9 @@ pub enum AddSubcommand {
     },
 }
 
-impl AddSubcommand {
+impl Subcommand for Add {
     /// Handle the subcommand call
-    pub fn handle(self, client: Client, url: Url) -> Result<Table> {
+    fn execute(&self, client: Client, url: Url) -> Result<Table> {
         todo!()
     }
 }
