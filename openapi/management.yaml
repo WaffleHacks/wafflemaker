@@ -228,13 +228,36 @@ paths:
               schema:
                 type: object
                 properties:
-                  config:
-                    $ref: "#/components/schemas/Service"
+                  automatic_updates:
+                    type: boolean
+                    description: Whether automatic container updates are enabled
+                  dependencies:
+                    type: object
+                    description: The external applications the service depends on
+                    properties:
+                      postgres:
+                        type: boolean
+                      redis:
+                        type: boolean
                   deployment_id:
                     type: string
                     nullable: true
                     description: The ID of the service within the deployer
-                    example: a9b76f566826914892fbf92d9205a1a127013b60d40fe539e246cfa46aeafa56
+                  domain:
+                    type: string
+                    nullable: true
+                    description: The domain the service is accessible at
+                  image:
+                    type: string
+                    description: The identifier of the docker image currently deployed
+              example:
+                automatic_updates: true
+                dependencies:
+                  postgres: true
+                  redis: true
+                deployment_id: a9b76f566826914892fbf92d9205a1a127013b60d40fe539e246cfa46aeafa56
+                domain: cms.wafflehacks.tech
+                image: wafflehacks/cms:master
         '401':
           $ref: "#/components/responses/Unauthorized"
         '404':
@@ -338,125 +361,6 @@ components:
         updated_at:
           type: integer
           description: When the lease was last updated (renewed or created)
-    Service:
-      type: object
-      description: The service's configuration
-      properties:
-        dependencies:
-          type: object
-          properties:
-            postgres:
-              oneOf:
-                - type: boolean
-                  description: Whether to enable the dependency
-                - type: string
-                  description: A different name for the environment variable
-                - type: object
-                  properties:
-                    role:
-                      type: string
-                      description: The role to pull database credentials as
-                    name:
-                      type: string
-                      description: A different name for the environment varible
-            redis:
-              oneOf:
-                - type: boolean
-                  description: Whether to enable the dependency
-                - type: string
-                  description: A different name for the environment variable
-        docker:
-          type: object
-          properties:
-            image:
-              type: string
-              description: A reference to a Docker image (without the tag)
-              example: wafflehacks/cms
-            tag:
-              type: string
-              description: The tag for a Docker image
-              example: latest
-            update:
-              type: object
-              properties:
-                additional_tags:
-                  type: array
-                  items:
-                    type: string
-                    description: A tag that is allowed to update a service (supporting globs)
-                  example: [sha-*, develop]
-                automatic:
-                  type: boolean
-                  description: Whether the service is allowed to be automatically updated
-                  example: true
-        environment:
-          type: object
-          description: A map of static environment variables
-          additionalProperties:
-            type: string
-          example:
-            db_type: pg
-            email_transport: mailgun
-        secrets:
-          type: object
-          additionalProperties:
-            oneOf:
-              - $ref: "#/components/schemas/ServiceAWSSecret"
-              - $ref: "#/components/schemas/ServiceGenerateSecret"
-              - type: string
-                enum: [load]
-                description: Load the secret from Vault
-          example:
-            aws:
-              role: cms
-              part: access
-            generated:
-              format: hex
-              length: 48
-              regenerate: false
-            loaded: load
-
-        web:
-          type: object
-          properties:
-            enabled:
-              type: boolean
-              description: Whether the container is accessible from the web
-              example: true
-            base:
-              type: string
-              description: The base domain for the subdomain
-              example: wafflehacks.tech
-    ServiceAWSSecret:
-      type: object
-      description: An AWS credentials secret
-      properties:
-        role:
-          type: string
-          description: The permissions for credentials to have
-        part:
-          type: string
-          description: Which part of the AWS credential to store in the environment variable
-          enum:
-            - access
-            - secret
-    ServiceGenerateSecret:
-      type: object
-      description: A generated secret
-      properties:
-        format:
-          type: string
-          description: The format to generate the secret in
-          enum:
-            - alphanumeric
-            - base64
-            - hex
-        length:
-          type: integer
-          description: How long the generated value should be
-        regenerate:
-          type: boolean
-          description: Whether the secret should be re-generated on a service update
   securitySchemes:
     TokenAuth:
       type: http

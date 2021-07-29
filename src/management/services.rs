@@ -1,9 +1,8 @@
 use crate::{
-    deployer,
+    config, deployer,
     http::named_trace,
     processor::jobs::{self, DeleteService, UpdateService},
     registry::REGISTRY,
-    service::Service,
 };
 use serde::Serialize;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
@@ -43,20 +42,51 @@ async fn list() -> Result<impl Reply, Rejection> {
 }
 
 #[derive(Debug, Serialize)]
-struct Response<'c> {
-    config: &'c Service,
+struct Response {
+    dependencies: DependenciesResponse,
+    image: String,
+    automatic_updates: bool,
+    domain: Option<String>,
     deployment_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct DependenciesResponse {
+    postgres: bool,
+    redis: bool,
 }
 
 /// Get the configuration for a service
 async fn get(service: String) -> Result<impl Reply, Rejection> {
     let reg = REGISTRY.read().await;
-    let config = reg.get(&service).ok_or_else(warp::reject::not_found)?;
+    let cfg = reg.get(&service).ok_or_else(warp::reject::not_found)?;
 
     let deployment_id = deployer::instance().service_id(&service).await?;
 
+    let dependencies = DependenciesResponse {
+        postgres: cfg.dependencies.postgres("").is_some(),
+        redis: cfg.dependencies.redis().is_some(),
+    };
+
+    // Display the domain if it was added
+    let domain = if cfg.web.enabled {
+        Some(format!(
+            "{}.{}",
+            &service,
+            cfg.web
+                .base
+                .as_ref()
+                .unwrap_or_else(|| &config::instance().deployment.domain)
+        ))
+    } else {
+        None
+    };
+
     Ok(warp::reply::json(&Response {
-        config,
+        dependencies,
+        image: format!("{}:{}", cfg.docker.image, cfg.docker.tag),
+        automatic_updates: cfg.docker.update.automatic,
+        domain,
         deployment_id,
     }))
 }
