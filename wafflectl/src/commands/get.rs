@@ -67,10 +67,8 @@ struct DeploymentsResponse {
 struct Lease {
     #[serde(skip)]
     service: String,
-    #[serde(rename = "lease_id")]
     id: String,
-    #[serde(rename = "lease_duration")]
-    duration: u64,
+    ttl: u64,
     updated_at: u64,
 }
 

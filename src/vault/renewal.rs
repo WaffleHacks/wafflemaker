@@ -54,21 +54,21 @@ pub async fn leases(interval: Duration, max_percent: f64, mut stop: Receiver<()>
                 for leases in sets.values_mut() {
                     for lease in leases {
                         let elapsed = (now() - lease.updated_at) as f64;
-                        let refresh_at = max_percent * lease.lease_duration as f64;
+                        let refresh_at = max_percent * lease.ttl as f64;
 
                         if elapsed >= refresh_at {
                             match vault.renew_lease(&lease).await {
                                 Ok(_) => {
                                     lease.updated_at = now();
                                     count += 1;
-                                    info!(parent: &span, id = %lease.lease_id, "successfully renewed lease");
+                                    info!(parent: &span, id = %lease.id, "successfully renewed lease");
                                 },
                                 Err(e) => {
-                                    error!(parent: &span, id = %lease.lease_id, error = %e, "failed to renew lease");
+                                    error!(parent: &span, id = %lease.id, error = %e, "failed to renew lease");
                                 },
                             }
                         }
-                        debug!(parent: &span, id = %lease.lease_id, "checked lease for renewal");
+                        debug!(parent: &span, id = %lease.id, "checked lease for renewal");
                     }
                 }
 

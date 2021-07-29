@@ -117,14 +117,12 @@ pub struct RoleCredentials {
     pub username: String,
 }
 
-// The below aliases can be added back pending
-// https://github.com/serde-rs/serde/issues/1976
 #[derive(Clone, Debug, Deserialize)]
 pub struct Lease {
-    // #[serde(alias = "lease_id")]
-    pub lease_id: String,
-    // #[serde(alias = "lease_duration")]
-    pub lease_duration: u64,
+    #[serde(rename = "lease_id")]
+    pub id: String,
+    #[serde(rename = "lease_duration")]
+    pub ttl: u64,
     #[serde(default = "now")]
     pub updated_at: u64,
 }

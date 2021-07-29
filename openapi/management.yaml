@@ -93,24 +93,26 @@ paths:
               example:
                 leases:
                   697bc5723aceb9a76bfb4cad9d9d2842b245059cbd000b36be1e81c902ef6378:
-                    - lease_id: aws/creds/cms/IGWxs95BK1KbxiVH
-                      lease_duration: 21600
+                    - id: aws/creds/cms/IGWxs95BK1KbxiVH
+                      ttl: 21600
                       updated_at: 1627252555
-                    - lease_id: database/creds/cms/yOw6mverq8HiWXWO
-                      lease_duration: 21600
+                    - id: database/creds/cms/yOw6mverq8HiWXWO
+                      ttl: 21600
                       updated_at: 1627252555
                   6c0aa53040b383fd1301d34d99c28fbad61001976c483cc6a498eaecbc49a9c7:
-                    - lease_id: database/creds/mailgunner/gMny2PUvX1z25GI6
-                      lease_duration: 1600
+                    - id: database/creds/mailgunner/gMny2PUvX1z25GI6
+                      ttl: 1600
                       updated_at: 1627252674
-                    - lease_id: aws/creds/mailgunner/QnAa5ClzQzWt7WCS
-                      lease_duration: 1600
+                    - id: aws/creds/mailgunner/QnAa5ClzQzWt7WCS
+                      ttl: 1600
                       updated_at: 1627252674
                 services:
                   cms: 697bc5723aceb9a76bfb4cad9d9d2842b245059cbd000b36be1e81c902ef6378
                   mailgunner: 6c0aa53040b383fd1301d34d99c28fbad61001976c483cc6a498eaecbc49a9c7
         '401':
           $ref: "#/components/responses/Unauthorized"
+
+  /leases/{service}:
     put:
       summary: Add a lease to track
       description: |
@@ -119,25 +121,25 @@ paths:
         exist for the specified service, the lease will not be tracked.
       tags:
         - Leases
+      parameters:
+        - in: path
+          name: service
+          required: true
+          description: The service to add the lease to
+          schema:
+            type: string
+          example: cms
       requestBody:
         description: The new lease details and service name
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                lease:
                   $ref: "#/components/schemas/Lease"
-                service:
-                  type: string
-                  description: The name of the service
             example:
-              service: cms
-              lease:
-                lease_id: database/creds/cms/yOw6mverq8HiWXWO
-                lease_duration: 21600
-                updated_at: 1627252555
+              id: database/creds/cms/yOw6mverq8HiWXWO
+              ttl: 21600
+              updated_at: 1627252555
       responses:
         '204':
           description: The lease was successfully registered with the service
@@ -156,6 +158,13 @@ paths:
       tags:
         - Leases
       parameters:
+        - in: path
+          name: service
+          required: true
+          description: The service to delete the lease from
+          schema:
+            type: string
+          example: cms
         - in: query
           name: id
           required: true
@@ -163,13 +172,6 @@ paths:
           schema:
             type: string
           example: database/creds/cms/yOw6mverq8HiWXWO
-        - in: query
-          name: service
-          required: true
-          description: The service to delete the lease from
-          schema:
-            type: string
-          example: cms
       responses:
         '204':
           description: The lease was successfully removed
@@ -326,13 +328,11 @@ components:
           description: A simplified message for why the error occurred
     Lease:
       type: object
-      # See src/vault/models.rs#120 for why the `lease_id` and `lease_duration`
-      # fields are not DRY.
       properties:
-        lease_id:
+        id:
           type: string
           description: The ID of the lease within Vault
-        lease_duration:
+        ttl:
           type: integer
           description: How long the lease is valid for
         updated_at:
