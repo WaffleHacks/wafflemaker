@@ -10,7 +10,10 @@ use warp::{Filter, Rejection, Reply};
 
 /// Build the routes for deployments
 pub fn routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let get = warp::get().and_then(get).with(named_trace("get"));
+    let get = warp::get()
+        .and(warp::path::end())
+        .and_then(get)
+        .with(named_trace("get"));
 
     let post = warp::put()
         .and(warp::path::param())

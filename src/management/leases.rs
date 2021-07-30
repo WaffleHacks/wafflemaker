@@ -8,7 +8,10 @@ use std::collections::HashMap;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 pub fn routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let list = warp::get().and_then(list).with(named_trace("list"));
+    let list = warp::get()
+        .and(warp::path::end())
+        .and_then(list)
+        .with(named_trace("list"));
 
     let update = warp::put()
         .and(warp::path::param())
