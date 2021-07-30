@@ -121,6 +121,7 @@ impl Connection {
 
 #[derive(Debug, Deserialize)]
 pub struct Git {
+    pub branch: String,
     pub clone_to: PathBuf,
     pub repository: String,
 }
@@ -228,6 +229,7 @@ mod tests {
         assert_eq!("traefik", network);
         assert_eq!("./state", state.to_str().unwrap());
 
+        assert_eq!("master", &config.git.branch);
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
         assert_eq!("WaffleHacks/waffles", &config.git.repository);
 
