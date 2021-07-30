@@ -1,4 +1,5 @@
 use super::*;
+use serde::Serialize;
 
 // wafflectl delete <lease {id} {service}|service {name}>
 #[derive(Debug, StructOpt)]
@@ -10,10 +11,10 @@ pub enum Delete {
     /// service's lifecycle. Does not error if a particular
     /// lease cannot be found.
     Lease {
-        /// The ID of the lease to remove
-        id: String,
         /// The service to delete the lease from
         service: String,
+        /// The ID of the lease to remove
+        id: String,
     },
     /// Delete a service
     ///
@@ -28,6 +29,21 @@ pub enum Delete {
 impl Subcommand for Delete {
     /// Handle the subcommand call
     fn execute(&self, client: Client) -> Result<Option<Table>> {
-        todo!()
+        match self {
+            Self::Lease { id, service } => {
+                let params = Lease { id: &id };
+                client.delete(&["leases", service.as_str()], Some(params))?;
+            }
+            Self::Service { name } => {
+                client.delete::<_, &str>(&["services", name.as_str()], None)?;
+            }
+        }
+
+        Ok(None)
     }
+}
+
+#[derive(Debug, Serialize)]
+struct Lease<'i> {
+    id: &'i str,
 }
