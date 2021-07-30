@@ -120,7 +120,7 @@ impl Job for UpdateService {
         if let Some(postgres) = service.dependencies.postgres(&self.name) {
             // Create the role if it doesn't exist
             let roles = fail!(vault::instance().list_database_roles().await);
-            if !roles.contains(&postgres.name.to_owned()) {
+            if !roles.contains(&postgres.role.to_owned()) {
                 fail!(vault::instance().create_database_role(postgres.role).await);
             }
 
