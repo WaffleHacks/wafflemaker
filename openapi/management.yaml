@@ -206,7 +206,7 @@ paths:
         '401':
           $ref: "#/components/responses/Unauthorized"
 
-  /service/{name}:
+  /services/{name}:
     get:
       summary: Get details about a service
       description: |
