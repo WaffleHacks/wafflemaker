@@ -84,12 +84,6 @@ async fn list() -> Result<impl Reply, Rejection> {
     }))
 }
 
-#[derive(Debug, Deserialize)]
-struct Add {
-    service: String,
-    lease: Lease,
-}
-
 /// Add a lease to track for a service
 async fn add(service: String, body: HttpLease) -> Result<impl Reply, Rejection> {
     let mut leases = LEASES.write().await;
