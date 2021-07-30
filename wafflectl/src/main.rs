@@ -22,14 +22,16 @@ fn main() -> Result<()> {
     let client = http::Client::new(cli.address, &cli.token).wrap_err("failed to build client")?;
 
     let content = cli.cmd.subcommand().execute(client)?;
-    println!(
-        "{}",
-        content.with(Style::psql()).with(
-            Modify::new(Row(1..))
-                .with(Alignment::left())
-                .with(Indent::new(1, 1, 0, 0))
-        )
-    );
+    if let Some(content) = content {
+        println!(
+            "{}",
+            content.with(Style::psql()).with(
+                Modify::new(Row(1..))
+                    .with(Alignment::left())
+                    .with(Indent::new(1, 1, 0, 0))
+            )
+        );
+    }
 
     Ok(())
 }

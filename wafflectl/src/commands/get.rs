@@ -33,7 +33,7 @@ pub enum Get {
 
 impl Subcommand for Get {
     /// Handle the subcommand call
-    fn execute(&self, client: Client) -> Result<Table> {
+    fn execute(&self, client: Client) -> Result<Option<Table>> {
         let table = match self {
             Self::Deployments => {
                 let response: DeploymentsResponse = client.get(&["deployments"])?;
@@ -55,7 +55,7 @@ impl Subcommand for Get {
             }
         };
 
-        Ok(table)
+        Ok(Some(table))
     }
 }
 

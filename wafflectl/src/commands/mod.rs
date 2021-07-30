@@ -15,5 +15,5 @@ pub use get::Get;
 pub use run::Run;
 
 pub trait Subcommand {
-    fn execute(&self, client: Client) -> Result<Table>;
+    fn execute(&self, client: Client) -> Result<Option<Table>>;
 }

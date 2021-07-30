@@ -1,4 +1,6 @@
 use super::*;
+use serde::Serialize;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // wafflectl add lease {service} {id} {ttl} [last updated]
 #[derive(Debug, StructOpt)]
@@ -23,7 +25,37 @@ pub enum Add {
 
 impl Subcommand for Add {
     /// Handle the subcommand call
-    fn execute(&self, client: Client) -> Result<Table> {
-        todo!()
+    fn execute(&self, client: Client) -> Result<Option<Table>> {
+        match self {
+            Self::Lease {
+                service,
+                id,
+                ttl,
+                updated_at,
+            } => {
+                let body = Lease {
+                    id: &id,
+                    ttl: *ttl,
+                    updated_at: updated_at.unwrap_or_else(now),
+                };
+                client.put(&["leases", service.as_str()], Some(body))?;
+            }
+        }
+
+        Ok(None)
     }
+}
+
+#[derive(Debug, Serialize)]
+struct Lease<'i> {
+    id: &'i str,
+    ttl: u64,
+    updated_at: u64,
+}
+
+fn now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
 }
