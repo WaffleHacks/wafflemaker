@@ -19,7 +19,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-check
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -30,7 +30,7 @@ jobs:
           command: check
 
   test:
-    name: Test Suite
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -42,7 +42,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-test
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -65,7 +65,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-rustfmt
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -90,7 +90,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-clippy
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
