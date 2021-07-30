@@ -73,6 +73,9 @@
   # The repository to pull configuration from
   repository = "WaffleHacks/waffles"
 
+  # The branch that gets deployed
+  branch = "master"
+
 # Configuration for the management interface
 # NOTE: this allows access to the entire system, it should not be publicly available
 [management]

@@ -71,7 +71,7 @@ pub async fn github(raw_body: Bytes, raw_signature: String) -> Result<impl Reply
     };
 
     // Check if the repository is allowed to be pulled
-    if repository.name != cfg.git.repository {
+    if repository.name != cfg.git.repository || !reference.ends_with(&cfg.git.branch) {
         return Err(reject::custom(UndeployableError));
     }
 
