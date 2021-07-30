@@ -1,5 +1,4 @@
 use crate::http::named_trace;
-use tracing::info;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 mod handlers;
@@ -29,11 +28,7 @@ pub fn routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone 
     // Health check route
     let health = warp::path("health")
         .and(warp::get())
-        .map(|| {
-            info!("alive and healthy!");
-            StatusCode::NO_CONTENT
-        })
-        .with(named_trace("health"));
+        .map(|| StatusCode::NO_CONTENT);
 
-    docker.or(github).or(health)
+    health.or(docker).or(github)
 }
