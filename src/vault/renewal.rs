@@ -57,7 +57,7 @@ pub async fn leases(interval: Duration, max_percent: f64, mut stop: Receiver<()>
                         let refresh_at = max_percent * lease.ttl as f64;
 
                         if elapsed >= refresh_at {
-                            match vault.renew_lease(&lease).await {
+                            match vault.renew_lease(lease).await {
                                 Ok(_) => {
                                     lease.updated_at = now();
                                     count += 1;

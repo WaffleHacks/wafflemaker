@@ -30,6 +30,7 @@ pub struct Config {
     pub dependencies: Dependencies,
     pub deployment: Deployment,
     pub git: Git,
+    pub management: Management,
     pub notifiers: Vec<Notifier>,
     pub secrets: Secrets,
     pub webhooks: Webhooks,
@@ -125,6 +126,13 @@ pub struct Git {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Management {
+    pub enabled: bool,
+    pub address: SocketAddr,
+    pub token: String,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 pub enum Notifier {
     Discord {
@@ -150,11 +158,11 @@ pub struct Secrets {
 impl Secrets {
     fn parse_duration(raw: &str) -> Result<Duration, ParseIntError> {
         let raw = raw.to_lowercase();
-        let seconds = if let Some(time) = raw.strip_suffix("h") {
+        let seconds = if let Some(time) = raw.strip_suffix('h') {
             time.parse::<u64>()? * 60 * 60
-        } else if let Some(time) = raw.strip_suffix("m") {
+        } else if let Some(time) = raw.strip_suffix('m') {
             time.parse::<u64>()? * 60
-        } else if let Some(time) = raw.strip_suffix("s") {
+        } else if let Some(time) = raw.strip_suffix('s') {
             time.parse::<u64>()?
         } else {
             raw.parse::<u64>()?
@@ -222,6 +230,10 @@ mod tests {
 
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
         assert_eq!("WaffleHacks/waffles", &config.git.repository);
+
+        assert!(config.management.enabled);
+        assert_eq!("127.0.0.1:8001", &config.management.address.to_string());
+        assert_eq!("please-change-me", config.management.token);
 
         assert_eq!(2, config.notifiers.len());
         assert!(matches!(

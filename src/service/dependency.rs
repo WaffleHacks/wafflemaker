@@ -1,8 +1,8 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A simple dependency that can be toggled on or off with a boolean, or implicitly enabled
 /// by specifying an environment variable name.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum SimpleDependency {
     State(bool),
@@ -12,7 +12,7 @@ pub enum SimpleDependency {
 impl SimpleDependency {
     pub fn resolve<'n>(&'n self, default: &'n str) -> Option<&'n str> {
         match self {
-            Self::Rename(name) => Some(&name),
+            Self::Rename(name) => Some(name),
             Self::State(true) => Some(default),
             Self::State(false) => None,
         }
@@ -29,7 +29,7 @@ impl Default for SimpleDependency {
 /// it can be explicitly enabled with a default environment variable name, or implicitly enabled
 /// with a custom environment variable name. However, it can also take a custom role to pull
 /// credentials from which will also implicitly enable it.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum DynamicDependency {
     State(bool),

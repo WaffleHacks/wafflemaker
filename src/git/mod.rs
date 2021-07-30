@@ -8,6 +8,7 @@ use tokio::sync::oneshot;
 use tracing::instrument;
 
 mod diff;
+mod head;
 mod pull;
 mod service;
 
@@ -49,6 +50,20 @@ impl Repository {
         // Get the result
         match rx.await.unwrap() {
             Return::Diff(r) => r,
+            _ => unreachable!(),
+        }
+    }
+
+    /// Get the current head of the repository
+    #[instrument(skip(self))]
+    pub async fn head(&self) -> Result<String> {
+        // Send command
+        let (tx, rx) = oneshot::channel();
+        self.0.send((Method::Head, tx)).unwrap();
+
+        // Get the result
+        match rx.await.unwrap() {
+            Return::Head(c) => c,
             _ => unreachable!(),
         }
     }

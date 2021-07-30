@@ -1,0 +1,368 @@
+openapi: 3.0.2
+info:
+  title: WaffleMaker Management API
+  description: The management API for the deployment abstraction layer for WaffleHacks
+  version: 0.1.1
+
+servers:
+  - url: http://127.0.0.1:8001
+    description: The default address for the management API
+
+security:
+  - TokenAuth: []
+
+paths:
+  /deployments:
+    get:
+      summary: Get the most recently deployed version
+      description: Get the commit hash of the most recently deployed version and some simple statistics.
+      tags:
+        - Deployments
+      responses:
+        '200':
+          description: Successfully got deployment information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commit:
+                    type: string
+                    description: The currently deployed commit
+                  services:
+                    type: integer
+                    description: The number of services currently deployed
+                  running:
+                    type: integer
+                    description: The number of services currently running
+              example:
+                commit: 4dcf707e09590bdeba222af4d891ae1e49f0d38a
+                services: 3
+                running: 2
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      summary: Re-run a deployment
+      description: |
+        Re-run a deployment given the commit hash of the before state. This is needed as a `git diff`
+        is used to determine what needs to be created/updated and what needs to be deleted.
+      tags:
+        - Deployments
+      parameters:
+        - in: path
+          name: before
+          schema:
+            type: string
+          required: true
+          example: 786ef0fae1096bd1fc01c0c6fc096c9bec37835b
+          description: The before commit hash to use when computing the diff.
+      responses:
+        '204':
+          description: The deployment was successfully queued
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '413':
+          $ref: "#/components/responses/RequestTooLarge"
+
+  /leases:
+    get:
+      summary: Get all the currently registered leases
+      description: Get a map of services to the leases that are currently registered with it and being renewed.
+      tags:
+        - Leases
+      responses:
+        '200':
+          description: Successfully got all the leases
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leases:
+                    type: object
+                    description: A map of a deployment's ID to an array of its leases.
+                    additionalProperties:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Lease"
+                  services:
+                    type: object
+                    description: A map of service names to deployment IDs
+                    additionalProperties:
+                      type: string
+              example:
+                leases:
+                  697bc5723aceb9a76bfb4cad9d9d2842b245059cbd000b36be1e81c902ef6378:
+                    - id: aws/creds/cms/IGWxs95BK1KbxiVH
+                      ttl: 21600
+                      updated_at: 1627252555
+                    - id: database/creds/cms/yOw6mverq8HiWXWO
+                      ttl: 21600
+                      updated_at: 1627252555
+                  6c0aa53040b383fd1301d34d99c28fbad61001976c483cc6a498eaecbc49a9c7:
+                    - id: database/creds/mailgunner/gMny2PUvX1z25GI6
+                      ttl: 1600
+                      updated_at: 1627252674
+                    - id: aws/creds/mailgunner/QnAa5ClzQzWt7WCS
+                      ttl: 1600
+                      updated_at: 1627252674
+                services:
+                  cms: 697bc5723aceb9a76bfb4cad9d9d2842b245059cbd000b36be1e81c902ef6378
+                  mailgunner: 6c0aa53040b383fd1301d34d99c28fbad61001976c483cc6a498eaecbc49a9c7
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+
+  /leases/{service}:
+    put:
+      summary: Add a lease to track
+      description: |
+        Register a new lease with a service to be renewed and managed by its lifecycle. When the
+        service it is registered to gets deleted, the lease will be revoked as well. If no deployments
+        exist for the specified service, the lease will not be tracked.
+      tags:
+        - Leases
+      parameters:
+        - in: path
+          name: service
+          required: true
+          description: The service to add the lease to
+          schema:
+            type: string
+          example: cms
+      requestBody:
+        description: The new lease details and service name
+        required: true
+        content:
+          application/json:
+            schema:
+                  $ref: "#/components/schemas/Lease"
+            example:
+              id: database/creds/cms/yOw6mverq8HiWXWO
+              ttl: 21600
+              updated_at: 1627252555
+      responses:
+        '204':
+          description: The lease was successfully registered with the service
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '413':
+          $ref: "#/components/responses/RequestTooLarge"
+    delete:
+      summary: Stop tracking a lease
+      description: |
+        Removes a lease by its full ID from a particular service, preventing it from being
+        renewed or managed by the service's lifecycle. Does not error if a particular lease
+        cannot be found.
+      tags:
+        - Leases
+      parameters:
+        - in: path
+          name: service
+          required: true
+          description: The service to delete the lease from
+          schema:
+            type: string
+          example: cms
+        - in: query
+          name: id
+          required: true
+          description: The name of the lease to delete
+          schema:
+            type: string
+          example: database/creds/cms/yOw6mverq8HiWXWO
+      responses:
+        '204':
+          description: The lease was successfully removed
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+
+  /services:
+    get:
+      summary: Get the deployed services
+      description: |
+        Get a list of all the deployed services. While the services are deployed, they are
+        not necessarily running as an error could have occurred while deploying or the underlying
+        container was manually stopped.
+      tags:
+        - Services
+      responses:
+        '200':
+          description: A list of the deployed services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: The name of a service
+              example:
+                - cms
+                - mailgunner
+                - hackathon-manager
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+
+  /services/{name}:
+    get:
+      summary: Get details about a service
+      description: |
+        Get the configuration for a service as WaffleMaker sees it and the id of the container running it.
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: The name of the service
+      tags:
+        - Services
+      responses:
+        '200':
+          description: Successfully got a service's information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  automatic_updates:
+                    type: boolean
+                    description: Whether automatic container updates are enabled
+                  dependencies:
+                    type: object
+                    description: The external applications the service depends on
+                    properties:
+                      postgres:
+                        type: boolean
+                      redis:
+                        type: boolean
+                  deployment_id:
+                    type: string
+                    nullable: true
+                    description: The ID of the service within the deployer
+                  domain:
+                    type: string
+                    nullable: true
+                    description: The domain the service is accessible at
+                  image:
+                    type: string
+                    description: The identifier of the docker image currently deployed
+              example:
+                automatic_updates: true
+                dependencies:
+                  postgres: true
+                  redis: true
+                deployment_id: a9b76f566826914892fbf92d9205a1a127013b60d40fe539e246cfa46aeafa56
+                domain: cms.wafflehacks.tech
+                image: wafflehacks/cms:master
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '404':
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Re-deploy a service
+      description: Re-deploy a service using the current configuration stored on disk
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: The name of the service
+      tags:
+        - Services
+      responses:
+        '204':
+          description: Successfully queued a service update job
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+        '404':
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a service
+      description: |
+        Remove a service's currently running deployment (if any). Does not modify any state in the source repository.
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: The name of the service
+      tags:
+        - Services
+      responses:
+        '204':
+          description: Successfully queued a service delete job
+        '401':
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  responses:
+    BadRequest:
+      description: The request body could not be parsed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 400
+            message: bad request
+    NotFound:
+      description: The service could not be found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 404
+            message: not found
+    RequestTooLarge:
+      description: The request body was greater than 64 kilobytes
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 413
+            message: payload too large
+    Unauthorized:
+      description: The management token was invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: 401
+            message: unauthorized
+  schemas:
+    Error:
+      type: object
+      description: A generic error message
+      properties:
+        code:
+          type: integer
+          description: The HTTP status code
+        message:
+          type: string
+          description: A simplified message for why the error occurred
+    Lease:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The ID of the lease within Vault
+        ttl:
+          type: integer
+          description: How long the lease is valid for
+        updated_at:
+          type: integer
+          description: When the lease was last updated (renewed or created)
+  securitySchemes:
+    TokenAuth:
+      type: http
+      scheme: bearer
+      description: The management API authentication token as defined in the configuration file.

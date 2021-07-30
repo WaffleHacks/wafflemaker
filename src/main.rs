@@ -17,10 +17,12 @@ mod config;
 mod deployer;
 mod git;
 mod http;
+mod management;
 mod notifier;
 mod processor;
 mod service;
 mod vault;
+mod webhooks;
 
 use service::registry;
 
@@ -72,8 +74,11 @@ async fn main() -> Result<()> {
     // Start the job processor
     processor::spawn(stop_tx.clone());
 
+    // Start the management interface
+    management::start(stop_tx.clone())?;
+
     // Setup the routes
-    let routes = http::routes().recover(http::recover);
+    let routes = webhooks::routes().recover(http::recover);
 
     // Bind the server
     let (addr, server) = warp::serve(routes)

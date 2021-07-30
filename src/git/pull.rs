@@ -17,10 +17,7 @@ pub(crate) fn run(repo: &Repository, clone_url: &str, refspec: &str, latest: &st
     let fetch_commit = fetch(repo, refspec, remote)?;
 
     // Merge into the local head
-    info!(
-        "merging into {}",
-        fetch_commit.refname().unwrap_or(&refspec)
-    );
+    info!("merging into {}", fetch_commit.refname().unwrap_or(refspec));
     merge(repo, refspec, fetch_commit)?;
 
     // Checkout the latest commit
@@ -107,17 +104,17 @@ fn merge(repo: &Repository, refname: &str, fetch_commit: AnnotatedCommit) -> Res
     if analysis.0.is_fast_forward() {
         info!("merging with fast-forward");
 
-        match repo.find_reference(&refname) {
+        match repo.find_reference(refname) {
             Ok(mut r) => fast_forward(repo, &mut r, &fetch_commit)?,
             Err(_) => {
                 // Set reference to commit directly
                 repo.reference(
-                    &refname,
+                    refname,
                     fetch_commit.id(),
                     true,
                     &format!("setting {} to {}", refname, fetch_commit.id()),
                 )?;
-                repo.set_head(&refname)?;
+                repo.set_head(refname)?;
 
                 // Checkout the head
                 repo.checkout_head(Some(
@@ -214,7 +211,7 @@ fn normal_merge(
     }
 
     // Finalize the merge
-    let result_tree = repo.find_tree(index.write_tree_to(&repo)?)?;
+    let result_tree = repo.find_tree(index.write_tree_to(repo)?)?;
     let signature = repo.signature()?;
     let local_commit = repo.find_commit(local.id())?;
     let remote_commit = repo.find_commit(remote.id())?;

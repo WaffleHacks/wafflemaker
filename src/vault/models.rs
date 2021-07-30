@@ -79,7 +79,7 @@ pub struct Secret {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AWS {
+pub struct Aws {
     pub access_key: String,
     pub secret_key: String,
 }
@@ -117,13 +117,13 @@ pub struct RoleCredentials {
     pub username: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Lease {
     #[serde(rename = "lease_id")]
     pub id: String,
     #[serde(rename = "lease_duration")]
     pub ttl: u64,
-    #[serde(skip, default = "now")]
+    #[serde(default = "now")]
     pub updated_at: u64,
 }
 

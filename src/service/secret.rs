@@ -1,11 +1,11 @@
 use serde::{
     de::{value::MapAccessDeserializer, Deserializer, Error, MapAccess, Unexpected, Visitor},
-    Deserialize,
+    Deserialize, Serialize,
 };
 use std::{fmt, str::FromStr};
 
 /// The possible formats that a secret can be encoded into.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Format {
     Alphanumeric,
@@ -14,7 +14,7 @@ pub enum Format {
 }
 
 /// Which part of the pair to store in the variable
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Part {
     Access,
@@ -22,9 +22,10 @@ pub enum Part {
 }
 
 /// The possible secret types that can be retrieved/generated.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase", tag = "type")]
 pub enum Secret {
-    AWS {
+    Aws {
         role: String,
         part: Part,
     },
@@ -40,7 +41,7 @@ impl Secret {
     /// Get the type of secret
     pub fn name<'a>(&self) -> &'a str {
         match self {
-            Secret::AWS { .. } => "aws",
+            Secret::Aws { .. } => "aws",
             Secret::Generate { .. } => "generate",
             Secret::Load => "load",
         }
@@ -50,7 +51,7 @@ impl Secret {
 impl From<AuxiliarySecret> for Secret {
     fn from(aux: AuxiliarySecret) -> Secret {
         match aux {
-            AuxiliarySecret::Aws { role, part } => Secret::AWS { role, part },
+            AuxiliarySecret::Aws { role, part } => Secret::Aws { role, part },
             AuxiliarySecret::Generate {
                 format,
                 length,
@@ -67,7 +68,7 @@ impl From<AuxiliarySecret> for Secret {
 
 /// `AuxiliarySecret` exists to avoid implementing the deserializer of the map by hand which
 /// means we cannot use `Secret` itself as it would cause infinite recursion.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 enum AuxiliarySecret {
     Aws {

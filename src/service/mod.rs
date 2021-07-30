@@ -1,6 +1,6 @@
 use crate::config;
 use globset::{Glob, GlobSet, GlobSetBuilder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr, NoneAsEmptyString};
 use std::{collections::HashMap, ffi::OsStr, path::Path};
 use tokio::fs;
@@ -13,7 +13,7 @@ use dependency::*;
 pub use secret::{Format, Part as AWSPart, Secret};
 
 /// The configuration for a service
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Service {
     #[serde(default)]
     pub dependencies: Dependencies,
@@ -48,7 +48,7 @@ impl Service {
 }
 
 /// All the possible external dependencies a service can require.
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Dependencies {
     postgres: DynamicDependency,
     redis: SimpleDependency,
@@ -65,7 +65,7 @@ impl Dependencies {
 }
 
 /// The docker image configuration
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Docker {
     pub image: String,
     pub tag: String,
@@ -95,7 +95,7 @@ impl Docker {
 }
 
 #[serde_as]
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AutoUpdate {
     #[serde(default)]
     #[serde_as(as = "Vec<DisplayFromStr>")]
@@ -114,7 +114,7 @@ impl Default for AutoUpdate {
 }
 
 #[serde_as]
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Web {
     #[serde(default = "default_true")]
     pub enabled: bool,

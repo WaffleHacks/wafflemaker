@@ -29,9 +29,9 @@ pub enum Error {
     #[error("request timed out")]
     Timeout(#[source] ReqwestError),
     #[error("failed to read file")]
-    IoError(#[from] IoError),
+    IO(#[from] IoError),
     #[error("failed to process JWT")]
-    JwtError(#[from] JwtError),
+    Jwt(#[from] JwtError),
     #[error("an unknown error occurred while sending the request")]
     Unknown(#[source] ReqwestError),
 }

@@ -1,9 +1,10 @@
 use super::{
-    errors::{BodyDeserializeError, GitError, UndeployableError},
-    webhooks::{validators, Docker, Github},
+    models::{Docker, Github},
+    validators,
 };
 use crate::{
     config, git,
+    http::{BodyDeserializeError, GitError, UndeployableError},
     processor::jobs::{self, PlanUpdate, UpdateService},
     service::registry,
 };
