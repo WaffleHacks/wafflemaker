@@ -49,7 +49,10 @@ impl Subcommand for Get {
                     .with(Header("services"))
                     .with(Disable::Row(1..=1))
             }
-            Self::Service { name } => todo!(),
+            Self::Service { name } => {
+                let response: Service = client.get(&["services", name.as_str()])?;
+                Table::new(&[response])
+            }
         };
 
         Ok(table)
@@ -93,5 +96,30 @@ impl LeasesResponse {
         }
 
         table
+    }
+}
+
+#[derive(Debug, Deserialize, Tabled)]
+struct Service {
+    image: String,
+    automatic_updates: bool,
+    #[field(display_with = "display_option")]
+    domain: Option<String>,
+    #[field(display_with = "display_option")]
+    deployment_id: Option<String>,
+    #[header(inline("dependency."))]
+    dependencies: ServiceDependencies,
+}
+
+#[derive(Debug, Deserialize, Tabled)]
+struct ServiceDependencies {
+    postgres: bool,
+    redis: bool,
+}
+
+fn display_option(o: &Option<String>) -> String {
+    match o {
+        Some(s) => s.to_owned(),
+        None => "[none]".to_owned(),
     }
 }
