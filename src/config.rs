@@ -158,11 +158,11 @@ pub struct Secrets {
 impl Secrets {
     fn parse_duration(raw: &str) -> Result<Duration, ParseIntError> {
         let raw = raw.to_lowercase();
-        let seconds = if let Some(time) = raw.strip_suffix("h") {
+        let seconds = if let Some(time) = raw.strip_suffix('h') {
             time.parse::<u64>()? * 60 * 60
-        } else if let Some(time) = raw.strip_suffix("m") {
+        } else if let Some(time) = raw.strip_suffix('m') {
             time.parse::<u64>()? * 60
-        } else if let Some(time) = raw.strip_suffix("s") {
+        } else if let Some(time) = raw.strip_suffix('s') {
             time.parse::<u64>()?
         } else {
             raw.parse::<u64>()?

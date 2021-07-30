@@ -25,7 +25,7 @@ pub enum Part {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 pub enum Secret {
-    AWS {
+    Aws {
         role: String,
         part: Part,
     },
@@ -41,7 +41,7 @@ impl Secret {
     /// Get the type of secret
     pub fn name<'a>(&self) -> &'a str {
         match self {
-            Secret::AWS { .. } => "aws",
+            Secret::Aws { .. } => "aws",
             Secret::Generate { .. } => "generate",
             Secret::Load => "load",
         }
@@ -51,7 +51,7 @@ impl Secret {
 impl From<AuxiliarySecret> for Secret {
     fn from(aux: AuxiliarySecret) -> Secret {
         match aux {
-            AuxiliarySecret::Aws { role, part } => Secret::AWS { role, part },
+            AuxiliarySecret::Aws { role, part } => Secret::Aws { role, part },
             AuxiliarySecret::Generate {
                 format,
                 length,

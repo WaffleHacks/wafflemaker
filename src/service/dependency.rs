@@ -12,7 +12,7 @@ pub enum SimpleDependency {
 impl SimpleDependency {
     pub fn resolve<'n>(&'n self, default: &'n str) -> Option<&'n str> {
         match self {
-            Self::Rename(name) => Some(&name),
+            Self::Rename(name) => Some(name),
             Self::State(true) => Some(default),
             Self::State(false) => None,
         }

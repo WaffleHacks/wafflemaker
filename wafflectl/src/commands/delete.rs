@@ -31,7 +31,7 @@ impl Subcommand for Delete {
     fn execute(&self, client: Client) -> Result<Option<Table>> {
         match self {
             Self::Lease { id, service } => {
-                let params = Lease { id: &id };
+                let params = Lease { id };
                 client.delete(&["leases", service.as_str()], Some(params))?;
             }
             Self::Service { name } => {

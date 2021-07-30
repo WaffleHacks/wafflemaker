@@ -56,7 +56,7 @@ pub fn spawn<P: AsRef<Path>>(
 fn handle_call(repo: &Repository, method: Method, tx: oneshot::Sender<Return>) {
     match method {
         Method::Diff(before, after) => {
-            let result = diff::run(&repo, &before, &after);
+            let result = diff::run(repo, &before, &after);
             tx.send(Return::Diff(result))
                 .expect("failed to send on channel");
         }

@@ -20,7 +20,7 @@ mod renewal;
 use error::{Error, Result};
 use models::*;
 
-pub use models::{Lease, AWS};
+pub use models::{Aws, Lease};
 pub use renewal::LEASES;
 
 static STATIC_INSTANCE: OnceCell<Arc<Vault>> = OnceCell::new();
@@ -114,8 +114,8 @@ impl Vault {
 
     /// Fetch AWS credentials using the given role
     #[instrument(skip(self))]
-    pub async fn aws_credentials(&self, role: &str) -> Result<(AWS, Lease)> {
-        let response: BaseResponseWithLease<AWS> = self
+    pub async fn aws_credentials(&self, role: &str) -> Result<(Aws, Lease)> {
+        let response: BaseResponseWithLease<Aws> = self
             .client
             .get(format!("{}v1/aws/creds/{}", self.url, role))
             .send()

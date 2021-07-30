@@ -79,7 +79,7 @@ pub struct Secret {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AWS {
+pub struct Aws {
     pub access_key: String,
     pub secret_key: String,
 }

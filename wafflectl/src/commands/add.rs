@@ -34,7 +34,7 @@ impl Subcommand for Add {
                 updated_at,
             } => {
                 let body = Lease {
-                    id: &id,
+                    id,
                     ttl: *ttl,
                     updated_at: updated_at.unwrap_or_else(now),
                 };

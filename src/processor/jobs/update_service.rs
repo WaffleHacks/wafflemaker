@@ -5,7 +5,7 @@ use crate::{
     fail_notify,
     notifier::{self, Event, State},
     service::{registry::REGISTRY, AWSPart, Format, Secret, Service},
-    vault::{self, AWS},
+    vault::{self, Aws},
 };
 use async_trait::async_trait;
 use rand::{distributions::Alphanumeric, Rng, RngCore, SeedableRng};
@@ -73,10 +73,10 @@ impl Job for UpdateService {
 
         // Load secrets into the environment
         let mut leases = Vec::new();
-        let mut aws_creds: Option<AWS> = None;
+        let mut aws_creds: Option<Aws> = None;
         for (k, secret) in service.secrets.iter() {
             let value = match secret {
-                Secret::AWS { role, part } => {
+                Secret::Aws { role, part } => {
                     // Retrieve the initial set of credentials if they haven't been already
                     if aws_creds.is_none() {
                         let (creds, lease) = fail!(vault::instance().aws_credentials(role).await);
@@ -171,8 +171,8 @@ impl Job for UpdateService {
         match (previous_id, deployed) {
             // existing deployment succeeded, cleanup old version
             (Some(id), Ok(_)) => {
-                fail!(deployer::instance().delete(&id).await);
-                fail!(vault::instance().revoke_leases(&id).await);
+                fail!(deployer::instance().delete(id).await);
+                fail!(vault::instance().revoke_leases(id).await);
             }
             // existing deployment failed, start old version and cleanup
             (Some(id), Err(e)) => {

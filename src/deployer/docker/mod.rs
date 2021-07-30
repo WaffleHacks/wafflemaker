@@ -263,7 +263,7 @@ impl Deployer for Docker {
 
     #[instrument(skip(self))]
     async fn start(&self, id: &str) -> Result<()> {
-        let status = self.instance.start_container::<&str>(&id, None).await;
+        let status = self.instance.start_container::<&str>(id, None).await;
         if let Err(e) = status {
             if !matches!(e, BollardError::DockerResponseNotModifiedError { .. }) {
                 return Err(e.into());
@@ -274,7 +274,7 @@ impl Deployer for Docker {
 
     #[instrument(skip(self))]
     async fn stop(&self, id: &str) -> Result<()> {
-        let status = self.instance.stop_container(&id, None).await;
+        let status = self.instance.stop_container(id, None).await;
         if let Err(e) = status {
             if !matches!(
                 e,
@@ -292,7 +292,7 @@ impl Deployer for Docker {
         let status = self
             .instance
             .remove_container(
-                &id,
+                id,
                 Some(RemoveContainerOptions {
                     v: true,
                     link: false,
