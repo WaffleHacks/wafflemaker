@@ -23,6 +23,15 @@ pub enum Run {
 impl Subcommand for Run {
     /// Handle the subcommand call
     fn execute(&self, client: Client) -> Result<Option<Table>> {
-        todo!()
+        match self {
+            Self::Deployment { before } => {
+                client.put::<&str, _>(&["deployments", before.as_str()], None)?;
+            }
+            Self::Service { name } => {
+                client.put::<&str, _>(&["services", name.as_str()], None)?;
+            }
+        }
+
+        Ok(None)
     }
 }
