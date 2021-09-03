@@ -40,6 +40,7 @@ pub struct Config {
 pub struct Agent {
     pub address: SocketAddr,
     pub log: String,
+    pub sentry: Option<String>,
     pub workers: u32,
 }
 

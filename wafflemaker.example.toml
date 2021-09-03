@@ -8,6 +8,10 @@
   # Default: "info"
   log = "info"
 
+  # An optional Sentry ingest URL for your application
+  # Sentry is used for real-time error monitoring of our application
+  #sentry = "https://abcdef0123456789.ingest.sentry.io/1234567"
+
   # The number of deployment processors to run
   workers = 2
 
