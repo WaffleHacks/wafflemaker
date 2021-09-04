@@ -1,4 +1,9 @@
 use anyhow::{Context, Result};
+use sentry::{
+    integrations::{anyhow::capture_anyhow, tracing as sentry_tracing},
+    ClientOptions, IntoDsn,
+};
+use std::net::SocketAddr;
 use structopt::StructOpt;
 use tokio::{
     fs,
@@ -7,7 +12,9 @@ use tokio::{
     task,
 };
 use tracing::info;
-use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::{
+    fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 use warp::Filter;
 
 use args::Args;
@@ -24,6 +31,7 @@ mod service;
 mod vault;
 mod webhooks;
 
+use config::Config;
 use service::registry;
 
 #[tokio::main]
@@ -49,11 +57,22 @@ async fn main() -> Result<()> {
     }
 
     // Setup logging
-    tracing_subscriber::fmt()
-        .with_env_filter(log_filter)
-        .with_span_events(FmtSpan::CLOSE)
-        .init();
+    init_tracing(log_filter);
 
+    // Initialize sentry
+    let _guard = sentry::init(sentry_config(&configuration.agent.sentry)?);
+
+    match run_server(address, configuration).await {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            capture_anyhow(&e);
+            Err(e)
+        }
+    }
+}
+
+/// Connect to the services and start the server
+async fn run_server(address: SocketAddr, configuration: &Config) -> Result<()> {
     let (stop_tx, mut stop_rx) = broadcast::channel(1);
 
     // Initialize the service registry
@@ -117,4 +136,35 @@ async fn wait_for_exit() -> Result<()> {
         _ = int.recv() => Ok(()),
         _ = term.recv() => Ok(()),
     }
+}
+
+/// Generate a registry for tracing
+fn init_tracing<E: Into<EnvFilter>>(filter: E) {
+    let sentry = sentry_tracing::layer().filter(sentry_tracing::default_filter);
+    let fmt = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_span_events(FmtSpan::CLOSE)
+        .finish();
+
+    fmt.with(sentry).init();
+}
+
+/// Generate configuration for Sentry
+fn sentry_config(url: &Option<String>) -> Result<ClientOptions> {
+    let dsn = url
+        .as_ref()
+        .map(String::as_str)
+        .map(IntoDsn::into_dsn)
+        .transpose()
+        .context("failed to parse Sentry DSN")?
+        .flatten();
+
+    let options = ClientOptions {
+        dsn,
+        release: sentry::release_name!(),
+        attach_stacktrace: true,
+        ..Default::default()
+    };
+
+    Ok(options)
 }

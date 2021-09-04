@@ -1,4 +1,5 @@
 use eyre::{Result, WrapErr};
+use sentry::{ClientOptions, IntoDsn};
 use structopt::StructOpt;
 use tabled::{Alignment, Indent, Modify, Row, Style};
 
@@ -17,6 +18,14 @@ fn main() -> Result<()> {
 
     // Parse the CLI
     let cli = Args::from_args();
+
+    // Initialize sentry
+    let _guard = sentry::init(ClientOptions {
+        dsn: option_env!("SENTRY_DSN").into_dsn()?,
+        release: sentry::release_name!(),
+        attach_stacktrace: true,
+        ..Default::default()
+    });
 
     // Build the HTTP client
     let client = http::Client::new(cli.address, &cli.token).wrap_err("failed to build client")?;

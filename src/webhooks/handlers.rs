@@ -19,6 +19,11 @@ pub async fn docker(body: Docker, authorization: String) -> Result<impl Reply, R
 
     info!(image = %body.repository.repo_name, tag = %body.push_data.tag, "got new image update hook");
 
+    sentry::configure_scope(|scope| {
+        scope.set_tag("hook.repository", &body.repository.repo_name);
+        scope.set_tag("hook.tag", &body.push_data.tag);
+    });
+
     let reg = registry::REGISTRY.read().await;
     for (name, service) in reg.iter() {
         // Skip if the image does not match or automatic updates are off
@@ -57,6 +62,10 @@ pub async fn github(raw_body: Bytes, raw_signature: String) -> Result<impl Reply
         serde_json::from_slice(&raw_body).map_err(|_| reject::custom(BodyDeserializeError))?;
     info!("got new {} hook", body.name());
 
+    sentry::configure_scope(|scope| {
+        scope.set_tag("hook.type", body.name());
+    });
+
     let (before, after, reference, repository) = match body {
         Github::Ping { zen, hook_id } => {
             info!("received ping from hook {}: {}", hook_id, zen);
@@ -69,6 +78,13 @@ pub async fn github(raw_body: Bytes, raw_signature: String) -> Result<impl Reply
             repository,
         } => (before, after, reference, repository),
     };
+
+    sentry::configure_scope(|scope| {
+        scope.set_tag("hook.repository", &repository.name);
+        scope.set_tag("hook.after", &after);
+        scope.set_tag("hook.before", &before);
+        scope.set_tag("hook.reference", &reference);
+    });
 
     // Check if the repository is allowed to be pulled
     if repository.name != cfg.git.repository || !reference.ends_with(&cfg.git.branch) {

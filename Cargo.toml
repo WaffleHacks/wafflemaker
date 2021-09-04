@@ -26,6 +26,7 @@ anyhow = "1.0"
 thiserror = "1.0"
 
 # Logging
+sentry = { version = "0.23.0", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "rustls", "tracing"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
 uuid = { version = "0.8", features = ["v4"] }
