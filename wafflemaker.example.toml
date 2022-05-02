@@ -70,6 +70,9 @@
 
 # Configuration for internal DNS networking
 [dns]
+  # The DNS server the services should use
+  server = "127.0.0.1:1053"
+
   # The Redis store to put DNS records in for consumption by CoreDNS
   redis = "redis://127.0.0.1:6379"
 

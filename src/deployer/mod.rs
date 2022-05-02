@@ -14,7 +14,7 @@ use error::Result;
 static INSTANCE: OnceCell<Arc<Box<dyn Deployer>>> = OnceCell::new();
 
 /// Create the deployer service and test its connection
-pub async fn initialize(config: &Deployment, stop: Receiver<()>) -> Result<()> {
+pub async fn initialize(config: &Deployment, dns_server: &str, stop: Receiver<()>) -> Result<()> {
     let domain = config.domain.to_owned();
     let deployer: Box<dyn Deployer> = match &config.engine {
         DeploymentEngine::Docker {
@@ -24,7 +24,10 @@ pub async fn initialize(config: &Deployment, stop: Receiver<()>) -> Result<()> {
             network,
             state,
         } => Box::new(
-            Docker::new(connection, endpoint, timeout, domain, network, state, stop).await?,
+            Docker::new(
+                connection, endpoint, timeout, domain, dns_server, network, state, stop,
+            )
+            .await?,
         ),
     };
 

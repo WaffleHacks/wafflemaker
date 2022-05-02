@@ -123,6 +123,7 @@ impl Connection {
 
 #[derive(Debug, Deserialize)]
 pub struct Dns {
+    pub server: String,
     pub redis: String,
     pub key_prefix: String,
     pub zone: String,
@@ -240,6 +241,7 @@ mod tests {
 
         assert_eq!("dns:", &config.dns.key_prefix);
         assert_eq!("redis://127.0.0.1:6379", &config.dns.redis);
+        assert_eq!("127.0.0.1:1053", &config.dns.server);
         assert_eq!("wafflemaker.internal", &config.dns.zone);
 
         assert_eq!("master", &config.git.branch);

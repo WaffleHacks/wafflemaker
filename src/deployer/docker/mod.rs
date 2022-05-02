@@ -5,7 +5,7 @@ use bollard::{
     container::{Config as CreateContainerConfig, NetworkingConfig, RemoveContainerOptions},
     errors::Error as BollardError,
     image::CreateImageOptions,
-    models::{EndpointSettings, Network},
+    models::{EndpointSettings, HostConfig, Network},
     Docker as Bollard, API_DEFAULT_VERSION,
 };
 use futures::stream::StreamExt;
@@ -22,6 +22,7 @@ pub struct Docker {
     domain: String,
     state: Db,
     network: Network,
+    dns: String,
 }
 
 impl Docker {
@@ -41,6 +42,7 @@ impl Docker {
         endpoint: S,
         timeout: &u64,
         domain: String,
+        dns_server: &str,
         network: S,
         path: P,
         stop: Receiver<()>,
@@ -96,6 +98,7 @@ impl Docker {
             domain,
             state,
             network,
+            dns: dns_server.to_owned(),
         })
     }
 
@@ -251,6 +254,10 @@ impl Deployer for Docker {
             labels: Some(labels),
             networking_config: Some(NetworkingConfig {
                 endpoints_config: self.endpoints_config(),
+            }),
+            host_config: Some(HostConfig {
+                dns: Some(vec![self.dns.clone()]),
+                ..Default::default()
             }),
             ..Default::default()
         };
