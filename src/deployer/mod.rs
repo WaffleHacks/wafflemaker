@@ -15,7 +15,6 @@ static INSTANCE: OnceCell<Arc<Box<dyn Deployer>>> = OnceCell::new();
 
 /// Create the deployer service and test its connection
 pub async fn initialize(config: &Deployment, dns_server: &str, stop: Receiver<()>) -> Result<()> {
-    let domain = config.domain.to_owned();
     let deployer: Box<dyn Deployer> = match &config.engine {
         DeploymentEngine::Docker {
             connection,
@@ -25,7 +24,7 @@ pub async fn initialize(config: &Deployment, dns_server: &str, stop: Receiver<()
             state,
         } => Box::new(
             Docker::new(
-                connection, endpoint, timeout, domain, dns_server, network, state, stop,
+                connection, endpoint, timeout, dns_server, network, state, stop,
             )
             .await?,
         ),

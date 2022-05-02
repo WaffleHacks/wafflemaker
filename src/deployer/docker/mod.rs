@@ -19,7 +19,6 @@ mod events;
 #[derive(Debug)]
 pub struct Docker {
     instance: Bollard,
-    domain: String,
     state: Db,
     network: Network,
     dns: String,
@@ -29,7 +28,7 @@ impl Docker {
     /// Connect to a new docker instance
     #[instrument(
         name = "docker",
-        skip(connection, endpoint, domain, path),
+        skip(connection, endpoint, path),
         fields(
             connection = connection.kind(),
             endpoint = endpoint.as_ref(),
@@ -41,7 +40,6 @@ impl Docker {
         connection: &Connection,
         endpoint: S,
         timeout: &u64,
-        domain: String,
         dns_server: &str,
         network: S,
         path: P,
@@ -95,7 +93,6 @@ impl Docker {
 
         Ok(Self {
             instance,
-            domain,
             state,
             network,
             dns: dns_server.to_owned(),
