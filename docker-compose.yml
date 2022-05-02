@@ -37,6 +37,17 @@ services:
       default:
         ipv4_address: 172.96.0.4
 
+  dns:
+    image: wafflehacks/dns:latest
+    environment:
+      - REDIS_URL=172.96.0.4:6379
+      - "REDIS_PREFIX=dns:"
+    networks:
+      default:
+        ipv4_address: 172.96.0.5
+    depends_on:
+      - redis
+
   setup:
     image: wafflehacks/wafflemaker:setup
     build: ./docker
