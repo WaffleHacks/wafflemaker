@@ -22,6 +22,7 @@ use args::Args;
 mod args;
 mod config;
 mod deployer;
+mod dns;
 mod git;
 mod http;
 mod management;
@@ -86,6 +87,9 @@ async fn run_server(address: SocketAddr, configuration: &Config) -> Result<()> {
 
     // Connect to Vault (secrets service)
     vault::initialize(&configuration.secrets, stop_tx.clone()).await?;
+
+    // Connect to the DNS management service
+    dns::initialize(&configuration.dns).await?;
 
     // Setup the notifier service
     notifier::initialize()?;

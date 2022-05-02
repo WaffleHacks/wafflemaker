@@ -73,9 +73,12 @@
   # The Redis store to put DNS records in for consumption by CoreDNS
   redis = "redis://127.0.0.1:6379"
 
+  # The prefix to give to all DNS keys in Redis
+  key_prefix = "dns:"
+
   # The internal DNS suffix for the services
   # The generated DNS addresses will be in the form <service>.<suffix>
-  suffix = "wafflemaker.internal"
+  zone_suffix = "wafflemaker.internal"
 
 # Configuration for the services repository
 [git]
