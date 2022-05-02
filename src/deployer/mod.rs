@@ -57,6 +57,9 @@ pub trait Deployer: Send + Sync {
     /// Start a service with its ID
     async fn start(&self, id: &str) -> Result<()>;
 
+    /// Get a service's internal IP address
+    async fn ip(&self, id: &str) -> Result<String>;
+
     /// Stop a service with its ID
     async fn stop(&self, id: &str) -> Result<()>;
 

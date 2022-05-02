@@ -5,7 +5,7 @@ use bollard::{
     container::{Config as CreateContainerConfig, NetworkingConfig, RemoveContainerOptions},
     errors::Error as BollardError,
     image::CreateImageOptions,
-    models::EndpointSettings,
+    models::{EndpointSettings, Network},
     Docker as Bollard, API_DEFAULT_VERSION,
 };
 use futures::stream::StreamExt;
@@ -21,7 +21,7 @@ pub struct Docker {
     instance: Bollard,
     domain: String,
     state: Db,
-    network: HashMap<String, EndpointSettings>,
+    network: Network,
 }
 
 impl Docker {
@@ -88,14 +88,6 @@ impl Docker {
 
         // Fetch the network information
         let network = instance.inspect_network::<&str>(network, None).await?;
-        let mut endpoints = HashMap::new();
-        endpoints.insert(
-            network.name.unwrap(),
-            EndpointSettings {
-                network_id: network.id,
-                ..Default::default()
-            },
-        );
 
         tokio::task::spawn(events::watch(stop));
 
@@ -103,8 +95,20 @@ impl Docker {
             instance,
             domain,
             state,
-            network: endpoints,
+            network,
         })
+    }
+
+    fn endpoints_config(&self) -> HashMap<String, EndpointSettings> {
+        let mut h = HashMap::new();
+        h.insert(
+            self.network.name.clone().unwrap(),
+            EndpointSettings {
+                network_id: self.network.id.clone(),
+                ..Default::default()
+            },
+        );
+        h
     }
 
     /// Convert a deployment name to a docker id
@@ -246,7 +250,7 @@ impl Deployer for Docker {
             attach_stdout: Some(true),
             labels: Some(labels),
             networking_config: Some(NetworkingConfig {
-                endpoints_config: self.network.clone(),
+                endpoints_config: self.endpoints_config(),
             }),
             ..Default::default()
         };
@@ -270,6 +274,15 @@ impl Deployer for Docker {
             }
         }
         Ok(())
+    }
+
+    #[instrument(skip(self))]
+    async fn ip(&self, id: &str) -> Result<String> {
+        let info = self.instance.inspect_container(id, None).await?;
+        let networks = info.network_settings.unwrap().networks.unwrap();
+        let network = networks.get(&self.network.name.clone().unwrap()).unwrap();
+
+        Ok(network.ip_address.clone().unwrap())
     }
 
     #[instrument(skip(self))]
