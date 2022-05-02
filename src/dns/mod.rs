@@ -3,6 +3,7 @@ use once_cell::sync::OnceCell;
 use redis::{Client, RedisResult};
 use std::sync::Arc;
 
+mod records;
 mod service;
 
 pub use service::Dns;
@@ -19,13 +20,9 @@ pub async fn initialize(config: &DnsConfig) -> RedisResult<()> {
         .query_async::<_, String>(&mut conn)
         .await?;
 
-    INSTANCE.get_or_init(|| {
-        Arc::from(Dns::new(
-            client,
-            config.key_prefix.clone(),
-            config.zone_suffix.clone(),
-        ))
-    });
+    let dns = Dns::new(client, &config.key_prefix, &config.zone);
+    INSTANCE.get_or_init(|| Arc::from(dns));
+
     Ok(())
 }
 
