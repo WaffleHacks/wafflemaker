@@ -26,7 +26,7 @@ impl Job for DeleteService {
     async fn run(&self) {
         macro_rules! fail {
             ($result:expr) => {
-                fail_notify!(service_delete, &self.name; $result; "an error occurred while deleting service");
+                fail_notify!(service_delete, &self.name; $result; "an error occurred while deleting service")
             };
         }
 

@@ -31,7 +31,7 @@ impl Job for UpdateService {
     async fn run(&self) {
         macro_rules! fail {
             ($result:expr) => {
-                fail_notify!(service_update, &self.name; $result; "an error occurred while updating service");
+                fail_notify!(service_update, &self.name; $result; "an error occurred while updating service")
             };
         }
 

@@ -46,7 +46,7 @@ impl Job for PlanUpdate {
     async fn run(&self) {
         macro_rules! fail {
             ($result:expr) => {
-                fail_notify!(deployment, &self.after; $result; "an error occurred while planning deployment");
+                fail_notify!(deployment, &self.after; $result; "an error occurred while planning deployment")
             };
         }
 
