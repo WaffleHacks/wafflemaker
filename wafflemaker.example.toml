@@ -68,6 +68,15 @@
   # The certificate key to use
   #key = "./key.pem"
 
+# Configuration for internal DNS networking
+[dns]
+  # The Redis store to put DNS records in for consumption by CoreDNS
+  redis = "redis://127.0.0.1:6379"
+
+  # The internal DNS suffix for the services
+  # The generated DNS addresses will be in the form <service>.<suffix>
+  suffix = "wafflemaker.internal"
+
 # Configuration for the services repository
 [git]
   # Where to clone the configuration repository to
