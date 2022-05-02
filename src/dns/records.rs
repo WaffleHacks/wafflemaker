@@ -11,13 +11,13 @@ pub(crate) struct Records<'r> {
 impl<'r> Records<'r> {
     pub fn a_record(ip: &'r str) -> Self {
         Self {
-            a: Some(ARecord { ip4: ip, ttl: TTL }),
+            a: Some(ARecord { ip, ttl: TTL }),
         }
     }
 }
 
 #[derive(Serialize)]
 pub(crate) struct ARecord<'r> {
-    ip4: &'r str,
+    ip: &'r str,
     ttl: usize,
 }
