@@ -5,7 +5,7 @@ use bollard::{
     container::{Config as CreateContainerConfig, NetworkingConfig, RemoveContainerOptions},
     errors::Error as BollardError,
     image::CreateImageOptions,
-    models::{EndpointSettings, HostConfig, Network},
+    models::{EndpointSettings, HostConfig},
     Docker as Bollard, API_DEFAULT_VERSION,
 };
 use futures::stream::StreamExt;
@@ -20,7 +20,8 @@ mod events;
 pub struct Docker {
     instance: Bollard,
     state: Db,
-    network: Network,
+    network: String,
+    network_config: NetworkingConfig<String>,
     dns: String,
 }
 
@@ -88,27 +89,30 @@ impl Docker {
 
         // Fetch the network information
         let network = instance.inspect_network::<&str>(network, None).await?;
+        let network_name = network.name.unwrap();
+        let network_config = NetworkingConfig {
+            endpoints_config: {
+                let mut h = HashMap::new();
+                h.insert(
+                    network_name.clone(),
+                    EndpointSettings {
+                        network_id: network.id.clone(),
+                        ..Default::default()
+                    },
+                );
+                h
+            },
+        };
 
         tokio::task::spawn(events::watch(stop));
 
         Ok(Self {
             instance,
             state,
-            network,
+            network: network_name,
+            network_config,
             dns: dns_server.to_owned(),
         })
-    }
-
-    fn endpoints_config(&self) -> HashMap<String, EndpointSettings> {
-        let mut h = HashMap::new();
-        h.insert(
-            self.network.name.clone().unwrap(),
-            EndpointSettings {
-                network_id: self.network.id.clone(),
-                ..Default::default()
-            },
-        );
-        h
     }
 
     /// Convert a deployment name to a docker id
@@ -249,9 +253,7 @@ impl Deployer for Docker {
             attach_stderr: Some(true),
             attach_stdout: Some(true),
             labels: Some(labels),
-            networking_config: Some(NetworkingConfig {
-                endpoints_config: self.endpoints_config(),
-            }),
+            networking_config: Some(self.network_config.clone()),
             host_config: Some(HostConfig {
                 dns: Some(vec![self.dns.clone()]),
                 ..Default::default()
@@ -284,7 +286,7 @@ impl Deployer for Docker {
     async fn ip(&self, id: &str) -> Result<String> {
         let info = self.instance.inspect_container(id, None).await?;
         let networks = info.network_settings.unwrap().networks.unwrap();
-        let network = networks.get(&self.network.name.clone().unwrap()).unwrap();
+        let network = networks.get(&self.network.clone()).unwrap();
 
         Ok(network.ip_address.clone().unwrap())
     }
