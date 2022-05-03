@@ -34,7 +34,7 @@ async fn load_dir(reg: &mut HashMap<String, Service>, path: &Path) -> Result<()>
             continue;
         }
 
-        if entry.path().extension().map(OsStr::to_str).flatten() != Some("toml") {
+        if entry.path().extension().and_then(OsStr::to_str) != Some("toml") {
             continue;
         }
 

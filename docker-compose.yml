@@ -2,9 +2,9 @@ version: "3"
 
 services: 
   postgresql:
-    image: postgres:13-alpine
+    image: postgres:14-alpine
     ports:
-      - 5432:5432
+      - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -14,9 +14,9 @@ services:
         ipv4_address: 172.96.0.2
   
   vault:
-    image: vault:1.7.2
+    image: vault:1.10.2
     ports:
-      - 8200:8200
+      - "8200:8200"
     environment:
       - VAULT_DEV_ROOT_TOKEN_ID=dev-token
     cap_add: 
@@ -30,12 +30,24 @@ services:
       - postgresql
 
   redis:
-    image: redis:6-alpine
+    image: redis:7-alpine
     ports:
-      - 6379:6379
+      - "6379:6379"
     networks:
       default:
         ipv4_address: 172.96.0.4
+
+  dns:
+    image: wafflehacks/dns:latest
+    environment:
+      - REDIS_URL=172.96.0.4:6379
+      - "REDIS_PREFIX=dns:"
+    networks:
+      default:
+        ipv4_address: 172.96.0.5
+      containers:
+    depends_on:
+      - redis
 
   setup:
     image: wafflehacks/wafflemaker:setup
@@ -52,3 +64,5 @@ networks:
     ipam:
       config:
         - subnet: 172.96.0.0/16
+  containers:
+    external: true

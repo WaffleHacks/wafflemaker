@@ -5,7 +5,7 @@ use bollard::{
     container::{Config as CreateContainerConfig, NetworkingConfig, RemoveContainerOptions},
     errors::Error as BollardError,
     image::CreateImageOptions,
-    models::EndpointSettings,
+    models::{EndpointSettings, HostConfig},
     Docker as Bollard, API_DEFAULT_VERSION,
 };
 use futures::stream::StreamExt;
@@ -19,16 +19,17 @@ mod events;
 #[derive(Debug)]
 pub struct Docker {
     instance: Bollard,
-    domain: String,
     state: Db,
-    network: HashMap<String, EndpointSettings>,
+    network: String,
+    network_config: NetworkingConfig<String>,
+    dns: String,
 }
 
 impl Docker {
     /// Connect to a new docker instance
     #[instrument(
         name = "docker",
-        skip(connection, endpoint, domain, path),
+        skip(connection, endpoint, path),
         fields(
             connection = connection.kind(),
             endpoint = endpoint.as_ref(),
@@ -40,7 +41,7 @@ impl Docker {
         connection: &Connection,
         endpoint: S,
         timeout: &u64,
-        domain: String,
+        dns_server: &str,
         network: S,
         path: P,
         stop: Receiver<()>,
@@ -88,22 +89,29 @@ impl Docker {
 
         // Fetch the network information
         let network = instance.inspect_network::<&str>(network, None).await?;
-        let mut endpoints = HashMap::new();
-        endpoints.insert(
-            network.name.unwrap(),
-            EndpointSettings {
-                network_id: network.id,
-                ..Default::default()
+        let network_name = network.name.unwrap();
+        let network_config = NetworkingConfig {
+            endpoints_config: {
+                let mut h = HashMap::new();
+                h.insert(
+                    network_name.clone(),
+                    EndpointSettings {
+                        network_id: network.id,
+                        ..Default::default()
+                    },
+                );
+                h
             },
-        );
+        };
 
         tokio::task::spawn(events::watch(stop));
 
         Ok(Self {
             instance,
-            domain,
             state,
-            network: endpoints,
+            network: network_name,
+            network_config,
+            dns: dns_server.to_owned(),
         })
     }
 
@@ -192,7 +200,7 @@ impl Deployer for Docker {
 
         if let Some(domain) = &options.domain {
             // Add routing labels
-            let router_name = domain.replace(".", "-");
+            let router_name = domain.replace('.', "-");
             labels.insert(
                 format!("traefik.http.routers.{}.rule", router_name),
                 format!("Host(`{}`)", domain),
@@ -215,7 +223,7 @@ impl Deployer for Docker {
                     if !ports.is_empty() {
                         // The port specification is in the format <port>/<tcp|udp|sctp>, but we
                         // only care about the port itself, the protocol is assumed to be TCP
-                        let mut port = ports.keys().take(1).cloned().next().unwrap();
+                        let mut port = ports.keys().take(1).next().cloned().unwrap();
                         let proto_idx = port.find('/').unwrap();
                         port.truncate(proto_idx);
 
@@ -245,8 +253,10 @@ impl Deployer for Docker {
             attach_stderr: Some(true),
             attach_stdout: Some(true),
             labels: Some(labels),
-            networking_config: Some(NetworkingConfig {
-                endpoints_config: self.network.clone(),
+            networking_config: Some(self.network_config.clone()),
+            host_config: Some(HostConfig {
+                dns: Some(vec![self.dns.clone()]),
+                ..Default::default()
             }),
             ..Default::default()
         };
@@ -270,6 +280,15 @@ impl Deployer for Docker {
             }
         }
         Ok(())
+    }
+
+    #[instrument(skip(self))]
+    async fn ip(&self, id: &str) -> Result<String> {
+        let info = self.instance.inspect_container(id, None).await?;
+        let networks = info.network_settings.unwrap().networks.unwrap();
+        let network = networks.get(&self.network.clone()).unwrap();
+
+        Ok(network.ip_address.clone().unwrap())
     }
 
     #[instrument(skip(self))]

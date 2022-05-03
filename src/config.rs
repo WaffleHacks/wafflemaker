@@ -29,6 +29,7 @@ pub struct Config {
     pub agent: Agent,
     pub dependencies: Dependencies,
     pub deployment: Deployment,
+    pub dns: Dns,
     pub git: Git,
     pub management: Management,
     pub notifiers: Vec<Notifier>,
@@ -118,6 +119,14 @@ impl Connection {
             Self::Ssl { .. } => "ssl",
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Dns {
+    pub server: String,
+    pub redis: String,
+    pub key_prefix: String,
+    pub zone: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -229,6 +238,11 @@ mod tests {
         assert_eq!(&120, timeout);
         assert_eq!("traefik", network);
         assert_eq!("./state", state.to_str().unwrap());
+
+        assert_eq!("dns:", &config.dns.key_prefix);
+        assert_eq!("redis://127.0.0.1:6379", &config.dns.redis);
+        assert_eq!("127.0.0.1:1053", &config.dns.server);
+        assert_eq!("wafflemaker.internal", &config.dns.zone);
 
         assert_eq!("master", &config.git.branch);
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());

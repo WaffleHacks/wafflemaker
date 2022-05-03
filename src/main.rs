@@ -22,6 +22,7 @@ use args::Args;
 mod args;
 mod config;
 mod deployer;
+mod dns;
 mod git;
 mod http;
 mod management;
@@ -82,10 +83,18 @@ async fn run_server(address: SocketAddr, configuration: &Config) -> Result<()> {
     let repository_handle = git::initialize(&configuration.git.clone_to);
 
     // Connect to the deployment service
-    deployer::initialize(&configuration.deployment, stop_tx.subscribe()).await?;
+    deployer::initialize(
+        &configuration.deployment,
+        &configuration.dns.server,
+        stop_tx.subscribe(),
+    )
+    .await?;
 
     // Connect to Vault (secrets service)
     vault::initialize(&configuration.secrets, stop_tx.clone()).await?;
+
+    // Connect to the DNS management service
+    dns::initialize(&configuration.dns).await?;
 
     // Setup the notifier service
     notifier::initialize()?;

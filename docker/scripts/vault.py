@@ -4,7 +4,7 @@ import requests
 from os import environ
 from time import sleep
 from sys import exit
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 ADDRESS = environ.get("VAULT_ADDR", "http://172.96.0.3:8200")
 HEADERS = {
@@ -17,11 +17,21 @@ AWS_SECRET_ACCESS_KEY = environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = environ.get("AWS_REGION")
 
 
-def send_request(method: str, path: str, body: Dict[str, Any], error_message: str):
-    response = requests.request(method, f"{ADDRESS}{path}", json=body, headers=HEADERS)
-    if response.status_code not in [200, 201, 202, 203, 204, 205, 206]:
-        print(f"{error_message}: ({response.status_code}) {response.text}")
+def send_request(
+    method: str,
+    path: str,
+    body: Optional[Dict[str, Any]] = None,
+    error_message: str = "",
+    should_error=True,
+    deserialize=False,
+):
+    r = requests.request(method, f"{ADDRESS}{path}", json=body, headers=HEADERS)
+    if r.status_code not in [200, 201, 202, 203, 204, 205, 206] and should_error:
+        print(f"{error_message}: ({r.status_code}) {r.text}")
         exit(1)
+
+    if deserialize:
+        return r.json()
 
 
 print("Ensuring Vault is initialized...")
@@ -79,5 +89,15 @@ send_request(
     {"policy": role.read()},
     "Failed to create wafflemaker policy",
 )
+
+print("Getting token...")
+token = send_request(
+    "POST",
+    "/v1/auth/token/create-orphan",
+    {"policies": ["wafflemaker"]},
+    "Failed to create wafflemaker token",
+    deserialize=True,
+)
+print(token.get("auth").get("client_token"))
 
 print("Successfully setup Vault")

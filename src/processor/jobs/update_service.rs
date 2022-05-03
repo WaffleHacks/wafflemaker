@@ -2,7 +2,7 @@ use super::Job;
 use crate::{
     config,
     deployer::{self, CreateOpts},
-    fail_notify,
+    dns, fail_notify,
     notifier::{self, Event, State},
     service::{registry::REGISTRY, AWSPart, Format, Secret, Service},
     vault::{self, Aws},
@@ -31,7 +31,7 @@ impl Job for UpdateService {
     async fn run(&self) {
         macro_rules! fail {
             ($result:expr) => {
-                fail_notify!(service_update, &self.name; $result; "an error occurred while updating service");
+                fail_notify!(service_update, &self.name; $result; "an error occurred while updating service")
             };
         }
 
@@ -50,7 +50,7 @@ impl Job for UpdateService {
             .image(&service.docker.image, &service.docker.tag);
 
         if service.web.enabled {
-            let subdomain = self.name.replace("-", ".");
+            let subdomain = self.name.replace('-', ".");
             let base = match &service.web.base {
                 Some(base) => base,
                 None => &config.deployment.domain,
@@ -193,6 +193,10 @@ impl Job for UpdateService {
 
         // Save the credential leases for renewal
         vault::instance().register_leases(&new_id, leases).await;
+
+        // Register the internal DNS record(s)
+        let ip = fail!(deployer::instance().ip(&new_id).await);
+        fail!(dns::instance().register(&self.name, &ip).await);
 
         info!("deployed with id \"{}\"", new_id);
         notifier::notify(Event::service_update(&self.name, State::Success)).await;

@@ -1,6 +1,6 @@
 use super::Job;
 use crate::{
-    deployer, fail_notify,
+    deployer, dns, fail_notify,
     notifier::{self, Event, State},
     service::registry::REGISTRY,
     vault,
@@ -26,7 +26,7 @@ impl Job for DeleteService {
     async fn run(&self) {
         macro_rules! fail {
             ($result:expr) => {
-                fail_notify!(service_delete, &self.name; $result; "an error occurred while deleting service");
+                fail_notify!(service_delete, &self.name; $result; "an error occurred while deleting service")
             };
         }
 
@@ -54,6 +54,8 @@ impl Job for DeleteService {
         fail!(deployer::instance().delete_by_name(&self.name).await);
 
         fail!(vault::instance().revoke_leases(&id).await);
+
+        fail!(dns::instance().unregister(&self.name).await);
 
         if vault::instance()
             .delete_database_role(&self.name)
