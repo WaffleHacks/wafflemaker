@@ -120,14 +120,14 @@ pub struct Web {
     pub enabled: bool,
     #[serde(default)]
     #[serde_as(as = "NoneAsEmptyString")]
-    pub base: Option<String>,
+    pub domain: Option<String>,
 }
 
 impl Default for Web {
     fn default() -> Web {
         Web {
             enabled: true,
-            base: None,
+            domain: None,
         }
     }
 }
@@ -159,7 +159,7 @@ mod tests {
         assert_eq!(service.environment.len(), 4);
         assert_eq!(service.secrets.len(), 6);
         assert_eq!(service.web.enabled, true);
-        assert_eq!(service.web.base, Some("wafflehacks.tech".into()));
+        assert_eq!(service.web.domain, Some("testing.wafflehacks.tech".into()));
     }
 
     #[tokio::test]
@@ -177,6 +177,6 @@ mod tests {
         assert_eq!(service.environment.len(), 0);
         assert_eq!(service.secrets.len(), 0);
         assert_eq!(service.web.enabled, true);
-        assert_eq!(service.web.base, None);
+        assert_eq!(service.web.domain, None);
     }
 }

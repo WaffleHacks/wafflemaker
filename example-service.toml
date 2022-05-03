@@ -19,9 +19,9 @@
   # Whether to enable web access (default: true)
   enabled = true
 
-  # The base domain where the application can be accessed
-  # Defaults to the `deployment.domain` key in the configuration
-  base = "wafflehacks.tech"
+  # The domain where the application can be accessed
+  # Defaults to the filename combined with the `deployment.domain` key in the configuration
+  domain = "testing.wafflehacks.tech"
 
 # What external services this depends on
 # Currently supports: PostgreSQL and Redis

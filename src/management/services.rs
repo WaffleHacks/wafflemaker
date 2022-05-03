@@ -74,7 +74,7 @@ async fn get(service: String) -> Result<impl Reply, Rejection> {
             "{}.{}",
             &service,
             cfg.web
-                .base
+                .domain
                 .as_ref()
                 .unwrap_or_else(|| &config::instance().deployment.domain)
         ))

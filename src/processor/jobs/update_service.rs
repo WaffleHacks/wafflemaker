@@ -50,13 +50,16 @@ impl Job for UpdateService {
             .image(&service.docker.image, &service.docker.tag);
 
         if service.web.enabled {
-            let subdomain = self.name.replace('-', ".");
-            let base = match &service.web.base {
-                Some(base) => base,
-                None => &config.deployment.domain,
+            let domain = match service.web.domain.clone() {
+                Some(d) => d,
+                None => format!(
+                    "{}.{}",
+                    self.name.replace('-', "."),
+                    &config.deployment.domain
+                ),
             };
 
-            options = options.domain(format!("{}.{}", subdomain, base));
+            options = options.domain(domain);
         }
 
         for (k, v) in service.environment.iter() {
