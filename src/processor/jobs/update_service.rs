@@ -50,7 +50,7 @@ impl Job for UpdateService {
             .image(&service.docker.image, &service.docker.tag);
 
         if service.web.enabled {
-            let subdomain = self.name.replace("-", ".");
+            let subdomain = self.name.replace('-', ".");
             let base = match &service.web.base {
                 Some(base) => base,
                 None => &config.deployment.domain,

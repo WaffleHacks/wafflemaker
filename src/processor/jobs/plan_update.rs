@@ -77,7 +77,7 @@ impl Job for PlanUpdate {
                 continue;
             }
 
-            if diff.path.extension().map(OsStr::to_str).flatten() != Some("toml") {
+            if diff.path.extension().and_then(OsStr::to_str) != Some("toml") {
                 info!(path = %diff.path.display(), "skipping non-service file");
                 continue;
             }

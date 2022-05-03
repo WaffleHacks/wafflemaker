@@ -96,7 +96,7 @@ impl Docker {
                 h.insert(
                     network_name.clone(),
                     EndpointSettings {
-                        network_id: network.id.clone(),
+                        network_id: network.id,
                         ..Default::default()
                     },
                 );
@@ -200,7 +200,7 @@ impl Deployer for Docker {
 
         if let Some(domain) = &options.domain {
             // Add routing labels
-            let router_name = domain.replace(".", "-");
+            let router_name = domain.replace('.', "-");
             labels.insert(
                 format!("traefik.http.routers.{}.rule", router_name),
                 format!("Host(`{}`)", domain),
@@ -223,7 +223,7 @@ impl Deployer for Docker {
                     if !ports.is_empty() {
                         // The port specification is in the format <port>/<tcp|udp|sctp>, but we
                         // only care about the port itself, the protocol is assumed to be TCP
-                        let mut port = ports.keys().take(1).cloned().next().unwrap();
+                        let mut port = ports.keys().take(1).next().cloned().unwrap();
                         let proto_idx = port.find('/').unwrap();
                         port.truncate(proto_idx);
 
