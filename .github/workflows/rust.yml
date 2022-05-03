@@ -12,31 +12,31 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-build
-        - uses: actions-rs/toolchain@v1
-          with:
-            profile: minimal
-            toolchain: stable
-            override: true
-        - uses: actions-rs/cargo@v1
-          with:
-            command: build
-            args: --release --bins --workspace
-        - uses: actions/upload-artifact@v3
-          with:
-            name: wafflemaker
-            path: target/release/wafflemaker
-        - uses: actions/upload-artifact@v3
-          with:
-            name: wafflectl
-            path: target/release/wafflectl
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-build
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --bins --workspace
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wafflemaker
+          path: target/release/wafflemaker
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wafflectl
+          path: target/release/wafflectl
 
   check:
     name: Check
