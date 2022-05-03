@@ -45,6 +45,7 @@ services:
     networks:
       default:
         ipv4_address: 172.96.0.5
+      containers:
     depends_on:
       - redis
 
@@ -63,3 +64,5 @@ networks:
     ipam:
       config:
         - subnet: 172.96.0.0/16
+  containers:
+    external: true
