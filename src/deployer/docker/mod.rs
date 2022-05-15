@@ -159,8 +159,8 @@ impl Deployer for Docker {
         skip(self, options),
         fields(
             name = %options.name,
-            web = %options.domain.is_some(),
-            domain = ?options.domain,
+            web = %options.routing.is_some(),
+            routing = ?options.routing,
             image = %options.image),
         )
     ]
@@ -198,12 +198,12 @@ impl Deployer for Docker {
             }
         }
 
-        if let Some(domain) = &options.domain {
+        if let Some(routing) = &options.routing {
             // Add routing labels
-            let router_name = domain.replace('.', "-");
+            let router_name = routing.domain.replace('.', "-");
             labels.insert(
                 format!("traefik.http.routers.{}.rule", router_name),
-                format!("Host(`{}`)", domain),
+                format!("Host(`{}`)", routing.domain),
             );
             labels.insert(
                 format!("traefik.http.routers.{}.tls.certresolver", router_name),
@@ -244,7 +244,7 @@ impl Deployer for Docker {
         // Enable traefik if a domain is added
         labels.insert(
             "traefik.enable".to_string(),
-            options.domain.is_some().to_string(),
+            options.routing.is_some().to_string(),
         );
 
         let config = CreateContainerConfig {

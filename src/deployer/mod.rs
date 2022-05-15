@@ -76,11 +76,16 @@ pub trait Deployer: Send + Sync {
 #[derive(Debug, PartialEq)]
 pub struct CreateOpts {
     name: String,
-    domain: Option<String>,
-    path: Option<String>,
+    routing: Option<RoutingOpts>,
     environment: HashMap<String, String>,
     image: String,
     tag: String,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RoutingOpts {
+    domain: String,
+    path: Option<String>,
 }
 
 impl CreateOpts {
@@ -94,8 +99,7 @@ impl CreateOpts {
 #[derive(Debug, Default)]
 pub struct CreateOptsBuilder {
     name: String,
-    domain: Option<String>,
-    path: Option<String>,
+    routing: Option<RoutingOpts>,
     environment: HashMap<String, String>,
     image: String,
     tag: String,
@@ -113,15 +117,12 @@ impl CreateOptsBuilder {
         self
     }
 
-    /// Set the domain
-    pub fn domain<S: Into<String>>(mut self, domain: S) -> Self {
-        self.domain = Some(domain.into());
-        self
-    }
-
-    /// Set the path prefix
-    pub fn path<S: Into<String>>(mut self, path: S) -> Self {
-        self.path = Some(path.into());
+    /// Set the routing options
+    pub fn routing<S: Into<String>>(mut self, domain: S, path: Option<&str>) -> Self {
+        self.routing = Some(RoutingOpts {
+            domain: domain.into(),
+            path: path.map(|s| s.to_owned()),
+        });
         self
     }
 
@@ -143,8 +144,7 @@ impl CreateOptsBuilder {
     pub fn build(self) -> CreateOpts {
         CreateOpts {
             name: self.name,
-            domain: self.domain,
-            path: self.path,
+            routing: self.routing,
             environment: self.environment,
             image: self.image,
             tag: self.tag,
@@ -155,6 +155,7 @@ impl CreateOptsBuilder {
 #[cfg(test)]
 mod tests {
     use super::CreateOpts;
+    use crate::deployer::RoutingOpts;
     use std::collections::HashMap;
 
     #[test]
@@ -169,8 +170,10 @@ mod tests {
 
         let opts = CreateOpts {
             name: "hello-world".into(),
-            domain: Some("hello.world".into()),
-            path: Some("/testing".into()),
+            routing: Some(RoutingOpts {
+                domain: "hello.world".into(),
+                path: Some("/testing".into()),
+            }),
             environment: map,
             image: "wafflehacks/testing".into(),
             tag: "latest".into(),
@@ -178,8 +181,7 @@ mod tests {
         let from_builder = CreateOpts::builder()
             .name("hello-world")
             .image("wafflehacks/testing", "latest")
-            .domain("hello.world")
-            .path("/testing")
+            .routing("hello.world", Some("/testing"))
             .environment("another", "VaLuE")
             .environment(
                 "database_url",

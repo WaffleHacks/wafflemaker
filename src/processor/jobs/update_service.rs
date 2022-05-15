@@ -58,12 +58,8 @@ impl Job for UpdateService {
                     &config.deployment.domain
                 ),
             };
-            let path_prefix = match &service.web.path {
-                Some(p) => p.as_str(),
-                None => "",
-            };
 
-            options = options.domain(domain).path(path_prefix);
+            options = options.routing(domain, service.web.path.as_deref());
         }
 
         for (k, v) in service.environment.iter() {
