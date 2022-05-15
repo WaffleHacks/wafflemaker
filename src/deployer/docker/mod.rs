@@ -199,12 +199,33 @@ impl Deployer for Docker {
         }
 
         if let Some(routing) = &options.routing {
-            // Add routing labels
             let router_name = routing.domain.replace('.', "-");
-            labels.insert(
-                format!("traefik.http.routers.{}.rule", router_name),
-                format!("Host(`{}`)", routing.domain),
-            );
+
+            // Add routing label
+            let rule = match &routing.path {
+                Some(p) => format!("Host(`{}`) && PathPrefix(`{}`)", routing.domain, p),
+                None => format!("Host(`{}`)", routing.domain),
+            };
+            labels.insert(format!("traefik.http.routers.{}.rule", router_name), rule);
+
+            // Add path prefix middleware if necessary
+            if let Some(path) = &routing.path {
+                let middleware_name = format!("{}-strip", router_name);
+
+                labels.insert(
+                    format!("traefik.http.routers.{}.middlewares", router_name),
+                    format!("{}@docker", middleware_name),
+                );
+                labels.insert(
+                    format!(
+                        "traefik.http.middlewares.{}.stripprefix.prefixes",
+                        middleware_name
+                    ),
+                    path.to_string(),
+                );
+            }
+
+            // Enable HTTPS
             labels.insert(
                 format!("traefik.http.routers.{}.tls.certresolver", router_name),
                 "le".to_string(),
