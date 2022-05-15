@@ -77,6 +77,7 @@ pub trait Deployer: Send + Sync {
 pub struct CreateOpts {
     name: String,
     domain: Option<String>,
+    path: Option<String>,
     environment: HashMap<String, String>,
     image: String,
     tag: String,
@@ -94,6 +95,7 @@ impl CreateOpts {
 pub struct CreateOptsBuilder {
     name: String,
     domain: Option<String>,
+    path: Option<String>,
     environment: HashMap<String, String>,
     image: String,
     tag: String,
@@ -117,6 +119,12 @@ impl CreateOptsBuilder {
         self
     }
 
+    /// Set the path prefix
+    pub fn path<S: Into<String>>(mut self, path: S) -> Self {
+        self.path = Some(path.into());
+        self
+    }
+
     /// Set the image to deploy
     pub fn image<S: Into<String>>(mut self, image: S, tag: S) -> Self {
         self.image = image.into();
@@ -136,6 +144,7 @@ impl CreateOptsBuilder {
         CreateOpts {
             name: self.name,
             domain: self.domain,
+            path: self.path,
             environment: self.environment,
             image: self.image,
             tag: self.tag,
@@ -161,6 +170,7 @@ mod tests {
         let opts = CreateOpts {
             name: "hello-world".into(),
             domain: Some("hello.world".into()),
+            path: Some("/testing".into()),
             environment: map,
             image: "wafflehacks/testing".into(),
             tag: "latest".into(),
@@ -169,6 +179,7 @@ mod tests {
             .name("hello-world")
             .image("wafflehacks/testing", "latest")
             .domain("hello.world")
+            .path("/testing")
             .environment("another", "VaLuE")
             .environment(
                 "database_url",
