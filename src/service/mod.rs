@@ -39,11 +39,10 @@ impl Service {
             .unwrap_or(path)
             .with_extension("")
             .iter()
-            .rev()
             .map(OsStr::to_str)
             .map(Option::unwrap)
             .collect::<Vec<_>>()
-            .join("-")
+            .join("/")
     }
 }
 

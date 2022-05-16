@@ -8,6 +8,7 @@ use crate::{
     vault::{self, Aws},
 };
 use async_trait::async_trait;
+use itertools::Itertools;
 use rand::{distributions::Alphanumeric, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use tracing::{debug, error, info, instrument, warn};
@@ -38,6 +39,9 @@ impl Job for UpdateService {
         let config = config::instance();
         let service = &self.config;
 
+        let sanitized_name = self.name.replace('/', ".");
+        let domain_name = self.name.split('/').rev().join(".");
+
         notifier::notify(Event::service_update(&self.name, State::InProgress)).await;
 
         // Update the service in the registry
@@ -52,11 +56,7 @@ impl Job for UpdateService {
         if service.web.enabled {
             let domain = match service.web.domain.clone() {
                 Some(d) => d,
-                None => format!(
-                    "{}.{}",
-                    self.name.replace('-', "."),
-                    &config.deployment.domain
-                ),
+                None => format!("{}.{}", &domain_name, &config.deployment.domain),
             };
 
             options = options.routing(domain, service.web.path.as_deref());
@@ -120,7 +120,7 @@ impl Job for UpdateService {
         }
         info!("loaded secrets from vault into environment");
 
-        if let Some(postgres) = service.dependencies.postgres(&self.name) {
+        if let Some(postgres) = service.dependencies.postgres(&sanitized_name) {
             // Create the role if it doesn't exist
             let roles = fail!(vault::instance().list_database_roles().await);
             if !roles.contains(&postgres.role.to_owned()) {
@@ -204,7 +204,7 @@ impl Job for UpdateService {
 
         // Register the internal DNS record(s)
         let ip = fail!(deployer::instance().ip(&new_id).await);
-        fail!(dns::instance().register(&self.name, &ip).await);
+        fail!(dns::instance().register(&domain_name, &ip).await);
 
         info!("deployed with id \"{}\"", new_id);
         notifier::notify(Event::service_update(&self.name, State::Success)).await;

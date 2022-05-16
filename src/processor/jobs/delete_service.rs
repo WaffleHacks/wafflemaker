@@ -6,6 +6,7 @@ use crate::{
     vault,
 };
 use async_trait::async_trait;
+use itertools::Itertools;
 use tracing::{debug, info, instrument};
 
 #[derive(Debug)]
@@ -29,6 +30,9 @@ impl Job for DeleteService {
                 fail_notify!(service_delete, &self.name; $result; "an error occurred while deleting service")
             };
         }
+
+        let sanitized_name = self.name.replace('/', ".");
+        let domain_name = self.name.split('/').rev().join(".");
 
         let mut reg = REGISTRY.write().await;
         if reg.remove(&self.name).is_none() {
@@ -55,10 +59,10 @@ impl Job for DeleteService {
 
         fail!(vault::instance().revoke_leases(&id).await);
 
-        fail!(dns::instance().unregister(&self.name).await);
+        fail!(dns::instance().unregister(&domain_name).await);
 
         if vault::instance()
-            .delete_database_role(&self.name)
+            .delete_database_role(&sanitized_name)
             .await
             .is_err()
         {
