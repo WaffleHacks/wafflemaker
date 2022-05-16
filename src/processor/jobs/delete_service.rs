@@ -2,21 +2,20 @@ use super::Job;
 use crate::{
     deployer, dns, fail_notify,
     notifier::{self, Event, State},
-    service::registry::REGISTRY,
+    service::{registry::REGISTRY, ServiceName},
     vault,
 };
 use async_trait::async_trait;
-use itertools::Itertools;
 use tracing::{debug, info, instrument};
 
 #[derive(Debug)]
 pub struct DeleteService {
-    name: String,
+    name: ServiceName,
 }
 
 impl DeleteService {
     /// Create a new delete service job
-    pub fn new(name: String) -> Self {
+    pub fn new(name: ServiceName) -> Self {
         Self { name }
     }
 }
@@ -31,11 +30,8 @@ impl Job for DeleteService {
             };
         }
 
-        let sanitized_name = self.name.replace('/', ".");
-        let domain_name = self.name.split('/').rev().join(".");
-
         let mut reg = REGISTRY.write().await;
-        if reg.remove(&self.name).is_none() {
+        if reg.remove(&self.name.proper).is_none() {
             info!("service was never deployed, skipping");
             notifier::notify(Event::service_delete(&self.name, State::Success)).await;
             return;
@@ -59,10 +55,10 @@ impl Job for DeleteService {
 
         fail!(vault::instance().revoke_leases(&id).await);
 
-        fail!(dns::instance().unregister(&domain_name).await);
+        fail!(dns::instance().unregister(&self.name.domain).await);
 
         if vault::instance()
-            .delete_database_role(&sanitized_name)
+            .delete_database_role(&self.name.sanitized)
             .await
             .is_err()
         {

@@ -2,14 +2,17 @@ use crate::config;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr, NoneAsEmptyString};
+use std::fmt::Debug;
 use std::{collections::HashMap, ffi::OsStr, path::Path};
 use tokio::fs;
 
 mod dependency;
+mod name;
 pub mod registry;
 mod secret;
 
 use dependency::*;
+pub use name::ServiceName;
 pub use secret::{Format, Part as AWSPart, Secret};
 
 /// The configuration for a service
@@ -34,15 +37,18 @@ impl Service {
     }
 
     /// Generate the name of a service from its file path
-    pub fn name(path: &Path) -> String {
-        path.strip_prefix(&config::instance().git.clone_to)
+    pub fn name(path: &Path) -> ServiceName {
+        let name = path
+            .strip_prefix(&config::instance().git.clone_to)
             .unwrap_or(path)
             .with_extension("")
             .iter()
             .map(OsStr::to_str)
             .map(Option::unwrap)
             .collect::<Vec<_>>()
-            .join("/")
+            .join("/");
+
+        ServiceName::new(name)
     }
 }
 

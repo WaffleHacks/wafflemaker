@@ -60,7 +60,7 @@ impl<'paths> Capabilities<'paths> {
         m.insert("aws/creds/+", set![Read]);
         m.insert("database/creds/+", set![Read]);
         m.insert("database/roles/+", set![List, Create, Delete]);
-        m.insert("services/data/+", set![Create, Read, Update]);
+        m.insert("services/data/*", set![Create, Read, Update]);
         m
     }
 

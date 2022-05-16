@@ -1,5 +1,5 @@
 # Allow reading and writing to services configuration KV
-path "services/data/+" {
+path "services/data/*" {
   capabilities = ["create", "update", "read"]
 }
 

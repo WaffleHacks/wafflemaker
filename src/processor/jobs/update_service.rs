@@ -4,11 +4,10 @@ use crate::{
     deployer::{self, CreateOpts},
     dns, fail_notify,
     notifier::{self, Event, State},
-    service::{registry::REGISTRY, AWSPart, Format, Secret, Service},
+    service::{registry::REGISTRY, AWSPart, Format, Secret, Service, ServiceName},
     vault::{self, Aws},
 };
 use async_trait::async_trait;
-use itertools::Itertools;
 use rand::{distributions::Alphanumeric, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use tracing::{debug, error, info, instrument, warn};
@@ -16,12 +15,12 @@ use tracing::{debug, error, info, instrument, warn};
 #[derive(Debug)]
 pub struct UpdateService {
     config: Service,
-    name: String,
+    name: ServiceName,
 }
 
 impl UpdateService {
     /// Create a new update service job
-    pub fn new(config: Service, name: String) -> Self {
+    pub fn new(config: Service, name: ServiceName) -> Self {
         Self { config, name }
     }
 }
@@ -39,9 +38,6 @@ impl Job for UpdateService {
         let config = config::instance();
         let service = &self.config;
 
-        let sanitized_name = self.name.replace('/', ".");
-        let domain_name = self.name.split('/').rev().join(".");
-
         notifier::notify(Event::service_update(&self.name, State::InProgress)).await;
 
         // Update the service in the registry
@@ -50,13 +46,13 @@ impl Job for UpdateService {
 
         // Create the base container creation args
         let mut options = CreateOpts::builder()
-            .name(&self.name)
+            .name(&*self.name)
             .image(&service.docker.image, &service.docker.tag);
 
         if service.web.enabled {
             let domain = match service.web.domain.clone() {
                 Some(d) => d,
-                None => format!("{}.{}", &domain_name, &config.deployment.domain),
+                None => format!("{}.{}", &self.name.domain, &config.deployment.domain),
             };
 
             options = options.routing(domain, service.web.path.as_deref());
@@ -120,7 +116,7 @@ impl Job for UpdateService {
         }
         info!("loaded secrets from vault into environment");
 
-        if let Some(postgres) = service.dependencies.postgres(&sanitized_name) {
+        if let Some(postgres) = service.dependencies.postgres(&self.name.sanitized) {
             // Create the role if it doesn't exist
             let roles = fail!(vault::instance().list_database_roles().await);
             if !roles.contains(&postgres.role.to_owned()) {
@@ -150,7 +146,7 @@ impl Job for UpdateService {
         info!("loaded service dependencies into environment");
 
         let known_services = fail!(deployer::instance().list().await);
-        let previous_id = known_services.get(&self.name);
+        let previous_id = known_services.get(&*self.name);
 
         // Perform a rolling update of the service (if a previous version existed)
         // Flow (assuming previous version existed):
@@ -204,7 +200,7 @@ impl Job for UpdateService {
 
         // Register the internal DNS record(s)
         let ip = fail!(deployer::instance().ip(&new_id).await);
-        fail!(dns::instance().register(&domain_name, &ip).await);
+        fail!(dns::instance().register(&self.name.domain, &ip).await);
 
         info!("deployed with id \"{}\"", new_id);
         notifier::notify(Event::service_update(&self.name, State::Success)).await;

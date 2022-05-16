@@ -5,7 +5,7 @@ use crate::{
     registry::REGISTRY,
 };
 use serde::Serialize;
-use warp::{http::StatusCode, Filter, Rejection, Reply};
+use warp::{http::StatusCode, path::Tail, Filter, Rejection, Reply};
 
 /// Build the routes for services
 pub fn routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -15,18 +15,15 @@ pub fn routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clo
         .with(named_trace("list"));
 
     let get = warp::get()
-        .and(warp::path::param())
-        .and(warp::path::end())
+        .and(warp::path::tail())
         .and_then(get)
         .with(named_trace("get"));
     let redeploy = warp::put()
-        .and(warp::path::param())
-        .and(warp::path::end())
+        .and(warp::path::tail())
         .and_then(redeploy)
         .with(named_trace("redeploy"));
     let delete = warp::delete()
-        .and(warp::path::param())
-        .and(warp::path::end())
+        .and(warp::path::tail())
         .and_then(delete)
         .with(named_trace("delete"));
 
@@ -57,11 +54,13 @@ struct DependenciesResponse {
 }
 
 /// Get the configuration for a service
-async fn get(service: String) -> Result<impl Reply, Rejection> {
-    let reg = REGISTRY.read().await;
-    let cfg = reg.get(&service).ok_or_else(warp::reject::not_found)?;
+async fn get(service: Tail) -> Result<impl Reply, Rejection> {
+    let service = service.as_str();
 
-    let deployment_id = deployer::instance().service_id(&service).await?;
+    let reg = REGISTRY.read().await;
+    let cfg = reg.get(service).ok_or_else(warp::reject::not_found)?;
+
+    let deployment_id = deployer::instance().service_id(service).await?;
 
     let dependencies = DependenciesResponse {
         postgres: cfg.dependencies.postgres("").is_some(),
@@ -92,17 +91,19 @@ async fn get(service: String) -> Result<impl Reply, Rejection> {
 }
 
 /// Re-deploy a service
-async fn redeploy(service: String) -> Result<impl Reply, Rejection> {
-    let reg = REGISTRY.read().await;
-    let config = reg.get(&service).ok_or_else(warp::reject::not_found)?;
+async fn redeploy(service: Tail) -> Result<impl Reply, Rejection> {
+    let service = service.as_str();
 
-    jobs::dispatch(UpdateService::new(config.clone(), service));
+    let reg = REGISTRY.read().await;
+    let config = reg.get(service).ok_or_else(warp::reject::not_found)?;
+
+    jobs::dispatch(UpdateService::new(config.clone(), service.into()));
 
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// Delete a service
-async fn delete(service: String) -> Result<impl Reply, Rejection> {
-    jobs::dispatch(DeleteService::new(service));
+async fn delete(service: Tail) -> Result<impl Reply, Rejection> {
+    jobs::dispatch(DeleteService::new(service.as_str().into()));
     Ok(StatusCode::NO_CONTENT)
 }
