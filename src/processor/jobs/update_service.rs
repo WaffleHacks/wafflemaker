@@ -197,6 +197,11 @@ impl Job for UpdateService {
         // Save the credential leases for renewal
         vault::instance().register_leases(&new_id, leases).await;
 
+        // Revoke old leases
+        if let Some(old_id) = previous_id {
+            fail!(vault::instance().revoke_leases(old_id).await);
+        }
+
         // Register the internal DNS record(s)
         let ip = fail!(deployer::instance().ip(&new_id).await);
         fail!(dns::instance().register(&self.name, &ip).await);
