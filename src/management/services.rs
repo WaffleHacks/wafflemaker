@@ -96,13 +96,13 @@ async fn redeploy(service: String) -> Result<impl Reply, Rejection> {
     let reg = REGISTRY.read().await;
     let config = reg.get(&service).ok_or_else(warp::reject::not_found)?;
 
-    jobs::dispatch(UpdateService::new(config.clone(), service));
+    jobs::dispatch(UpdateService::new(config.clone(), service.into()));
 
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// Delete a service
 async fn delete(service: String) -> Result<impl Reply, Rejection> {
-    jobs::dispatch(DeleteService::new(service));
+    jobs::dispatch(DeleteService::new(service.into()));
     Ok(StatusCode::NO_CONTENT)
 }

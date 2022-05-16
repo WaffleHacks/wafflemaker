@@ -46,7 +46,7 @@ pub async fn docker(body: Docker, authorization: String) -> Result<impl Reply, R
         let mut updated = service.clone();
         updated.docker.tag = body.push_data.tag.clone();
 
-        jobs::dispatch(UpdateService::new(updated, name.clone()));
+        jobs::dispatch(UpdateService::new(updated, name.into()));
         info!("updating service \"{}\"", name);
     }
 

@@ -70,7 +70,7 @@ pub async fn leases(interval: Duration, max_percent: f64, mut stop: Receiver<()>
                                 Err(e) => {
                                     let reg = REGISTRY.read().await;
                                     if let Some(config) = reg.get(service) {
-                                        jobs::dispatch(UpdateService::new(config.clone(), service.to_owned()));
+                                        jobs::dispatch(UpdateService::new(config.clone(), service.into()));
                                     }
 
                                     warn!(parent: &span, id = %lease.id, error = %e, "failed to renew lease");

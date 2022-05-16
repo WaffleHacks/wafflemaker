@@ -42,7 +42,7 @@ async fn load_dir(reg: &mut HashMap<String, Service>, path: &Path) -> Result<()>
         let service = Service::parse(&entry.path()).await?;
 
         debug!("loaded service {}", &name);
-        reg.insert(name, service);
+        reg.insert(name.proper, service);
     }
 
     Ok(())
