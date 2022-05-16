@@ -59,7 +59,7 @@ impl Job for UpdateService {
                 ),
             };
 
-            options = options.domain(domain);
+            options = options.routing(domain, service.web.path.as_deref());
         }
 
         for (k, v) in service.environment.iter() {

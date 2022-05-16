@@ -37,10 +37,14 @@ def send_request(
 print("Ensuring Vault is initialized...")
 success = False
 for attempt in range(10):
-    response = requests.get(f"{ADDRESS}/v1/sys/init")
-    if response.json().get("initialized"):
-        success = True
-        break
+    try:
+        response = requests.get(f"{ADDRESS}/v1/sys/init")
+        if response.json().get("initialized"):
+            success = True
+            break
+    except ConnectionError:
+        print("\tconnection timeout, retrying in 1s")
+        pass
 
     sleep(1)
 

@@ -159,8 +159,8 @@ impl Deployer for Docker {
         skip(self, options),
         fields(
             name = %options.name,
-            web = %options.domain.is_some(),
-            domain = ?options.domain,
+            web = %options.routing.is_some(),
+            routing = ?options.routing,
             image = %options.image),
         )
     ]
@@ -198,13 +198,34 @@ impl Deployer for Docker {
             }
         }
 
-        if let Some(domain) = &options.domain {
-            // Add routing labels
-            let router_name = domain.replace('.', "-");
-            labels.insert(
-                format!("traefik.http.routers.{}.rule", router_name),
-                format!("Host(`{}`)", domain),
-            );
+        if let Some(routing) = &options.routing {
+            let router_name = routing.domain.replace('.', "-");
+
+            // Add routing label
+            let rule = match &routing.path {
+                Some(p) => format!("Host(`{}`) && PathPrefix(`{}`)", routing.domain, p),
+                None => format!("Host(`{}`)", routing.domain),
+            };
+            labels.insert(format!("traefik.http.routers.{}.rule", router_name), rule);
+
+            // Add path prefix middleware if necessary
+            if let Some(path) = &routing.path {
+                let middleware_name = format!("{}-strip", router_name);
+
+                labels.insert(
+                    format!("traefik.http.routers.{}.middlewares", router_name),
+                    format!("{}@docker", middleware_name),
+                );
+                labels.insert(
+                    format!(
+                        "traefik.http.middlewares.{}.stripprefix.prefixes",
+                        middleware_name
+                    ),
+                    path.to_string(),
+                );
+            }
+
+            // Enable HTTPS
             labels.insert(
                 format!("traefik.http.routers.{}.tls.certresolver", router_name),
                 "le".to_string(),
@@ -244,7 +265,7 @@ impl Deployer for Docker {
         // Enable traefik if a domain is added
         labels.insert(
             "traefik.enable".to_string(),
-            options.domain.is_some().to_string(),
+            options.routing.is_some().to_string(),
         );
 
         let config = CreateContainerConfig {
