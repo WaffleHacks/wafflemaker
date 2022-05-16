@@ -1,4 +1,8 @@
 use super::{instance, models::Lease};
+use crate::{
+    processor::jobs::{self, UpdateService},
+    registry::REGISTRY,
+};
 use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
@@ -9,7 +13,7 @@ use tokio::{
     sync::{broadcast::Receiver, RwLock},
     time::{self, Duration},
 };
-use tracing::{debug, error, info, info_span};
+use tracing::{debug, error, info, info_span, warn};
 
 pub static LEASES: Lazy<RwLock<HashMap<String, Vec<Lease>>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
@@ -51,7 +55,7 @@ pub async fn leases(interval: Duration, max_percent: f64, mut stop: Receiver<()>
                 let mut count = 0;
 
                 let vault = instance();
-                for leases in sets.values_mut() {
+                for (service, leases) in sets.iter_mut() {
                     for lease in leases {
                         let elapsed = (now() - lease.updated_at) as f64;
                         let refresh_at = max_percent * lease.ttl as f64;
@@ -64,7 +68,12 @@ pub async fn leases(interval: Duration, max_percent: f64, mut stop: Receiver<()>
                                     info!(parent: &span, id = %lease.id, "successfully renewed lease");
                                 },
                                 Err(e) => {
-                                    error!(parent: &span, id = %lease.id, error = %e, "failed to renew lease");
+                                    let reg = REGISTRY.read().await;
+                                    if let Some(config) = reg.get(service) {
+                                        jobs::dispatch(UpdateService::new(config.clone(), service.to_owned()));
+                                    }
+
+                                    warn!(parent: &span, id = %lease.id, error = %e, "failed to renew lease");
                                 },
                             }
                         }
