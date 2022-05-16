@@ -57,7 +57,7 @@ paths:
     post:
       summary: GitHub webhook receiver
       description: |
-        Recieves a notification from GitHub that a new push (or ping) was made to the
+        Receives a notification from GitHub that a new push (or ping) was made to the
         source repository. It then pulls the configuration from the repository and
         does a `git diff` between the last commit and the current commit. The result
         of the `git diff` is used to determine what services to create/update and what
@@ -91,7 +91,7 @@ paths:
                   hook_id: 30
       responses:
         '204':
-          description: The webhook was successfully processesd and a plan was queued.
+          description: The webhook was successfully processed and a plan was queued.
         '400':
           $ref: "#/components/responses/BadRequest"
         '401':

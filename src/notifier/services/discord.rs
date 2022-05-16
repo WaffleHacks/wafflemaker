@@ -46,7 +46,7 @@ impl<'f, 'n, 'v> From<&Event<'v, 'v>> for Embed<'n, 'v> {
                 state
             }
             Event::ServiceUpdate { name, state } | Event::ServiceDelete { name, state } => {
-                fields.push(Field::new("Serivce", *name, true));
+                fields.push(Field::new("Service", *name, true));
                 state
             }
         };

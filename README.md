@@ -4,7 +4,7 @@ WaffleHack's application deployment service built on [Docker](https://docker.com
 and [Vault](https://vaultproject.io), for storing application secrets. This supersedes [autodeploy](https://github.com/WaffleHacks/autodeploy), 
 fixing many of its pain points.
 
-An example service defintion can be found [here](./example-service.toml).
+An example service definition can be found [here](./example-service.toml).
 
 
 ## Introduction
@@ -23,12 +23,12 @@ I, [Alex](https://github.com/akrantz01), have recently become very interested in
 However, I have nothing at the scale necessary to run a full Kubernetes cluster, but I still wanted to implement it
 in some form or another. So this project is my take on it.
 
-> Sidenote: WaffleMaker actually implements a bit more than just GitOps. It also does some rudimentary container management
+> Side note: WaffleMaker actually implements a bit more than just GitOps. It also does some rudimentary container management
 > by restarting a container if it stops unexpectedly. I would like to expand these capabilities eventually to include
-> healthchecks and such.
+> health checks and such.
 
 This project was inspired by HackGT's [Beekeeper](https://github.com/HackGT/beekeeper) and [Beehive](https://github.com/HackGT/beehive) 
-system for managing their deployments. Since we are not running at the scale of HackGT, we have no need for Kubenetes, 
+system for managing their deployments. Since we are not running at the scale of HackGT, we have no need for Kubernetes, 
 so we opted to use Docker instead. Configuration is managed similarly to Beehive, however we use the TOML format as it 
 has fewer quirks and does not depend on indentation.
 
