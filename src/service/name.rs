@@ -18,7 +18,7 @@ impl ServiceName {
     pub(super) fn new<S: Into<String>>(name: S) -> ServiceName {
         let proper = name.into();
         let domain = proper.split('/').rev().join(".");
-        let sanitized = proper.replace('/', ".");
+        let sanitized = proper.replace('/', "_");
 
         ServiceName {
             proper,

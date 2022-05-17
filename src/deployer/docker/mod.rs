@@ -207,7 +207,7 @@ impl Deployer for Docker {
                 .take(8)
                 .map(char::from)
                 .collect::<String>();
-            let router_name = format!("{}-{}", options.name.replace('/', "."), suffix);
+            let router_name = format!("{}-{}", options.name.replace('/', "_"), suffix);
 
             // Add routing label
             let rule = match &routing.path {
