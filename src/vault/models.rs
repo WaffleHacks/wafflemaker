@@ -104,7 +104,7 @@ impl<'s> DatabaseRole<'s> {
             default_ttl: "21600", // 6hrs in seconds
             creation_statements: vec![
                 r#"CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}' INHERIT;"#.to_owned(),
-                format!(r#"GRANT {} TO "{{{{name}}}}";"#, role),
+                format!(r#"GRANT "{}" TO "{{{{name}}}}";"#, role),
             ],
             keys: Default::default(),
         }
