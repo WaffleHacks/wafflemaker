@@ -9,6 +9,8 @@ use bollard::{
     Docker as Bollard, API_DEFAULT_VERSION,
 };
 use futures::stream::StreamExt;
+use rand::{distributions::Alphanumeric, Rng, SeedableRng};
+use rand_chacha::ChaCha20Rng;
 use sled::{Config, Db, Mode};
 use std::{collections::HashMap, fs, path::Path};
 use tokio::sync::broadcast::Receiver;
@@ -199,7 +201,13 @@ impl Deployer for Docker {
         }
 
         if let Some(routing) = &options.routing {
-            let router_name = routing.domain.replace('.', "-");
+            let suffix = ChaCha20Rng::from_rng(rand::thread_rng())
+                .unwrap()
+                .sample_iter(&Alphanumeric)
+                .take(8)
+                .map(char::from)
+                .collect::<String>();
+            let router_name = format!("{}-{}", options.name.replace('/', "."), suffix);
 
             // Add routing label
             let rule = match &routing.path {
