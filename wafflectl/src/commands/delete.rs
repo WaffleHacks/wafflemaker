@@ -1,4 +1,5 @@
 use super::*;
+use crate::http::service_path;
 use serde::Serialize;
 
 // wafflectl delete <lease {id} {service}|service {name}>
@@ -35,7 +36,7 @@ impl Subcommand for Delete {
                 client.delete(&["leases", service.as_str()], Some(params))?;
             }
             Self::Service { name } => {
-                client.delete::<_, &str>(&["services", name.as_str()], None)?;
+                client.delete::<_, &str>(&service_path("services", &name), None)?;
             }
         }
 

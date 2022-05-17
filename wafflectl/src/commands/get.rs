@@ -1,4 +1,5 @@
 use super::*;
+use crate::http::service_path;
 use std::collections::HashMap;
 use tabled::{Disable, Header};
 
@@ -50,7 +51,7 @@ impl Subcommand for Get {
                     .with(Disable::Row(1..=1))
             }
             Self::Service { name } => {
-                let response: Service = client.get(&["services", name.as_str()])?;
+                let response: Service = client.get(&service_path("services", &name))?;
                 Table::new(&[response])
             }
         };

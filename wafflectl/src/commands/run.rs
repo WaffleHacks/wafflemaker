@@ -1,4 +1,5 @@
 use super::*;
+use crate::http::service_path;
 
 // wafflectl run <deployment {commit}|service {name}>
 #[derive(Debug, StructOpt)]
@@ -28,7 +29,7 @@ impl Subcommand for Run {
                 client.put::<&str, _>(&["deployments", before.as_str()], None)?;
             }
             Self::Service { name } => {
-                client.put::<&str, _>(&["services", name.as_str()], None)?;
+                client.put::<&str, _>(&service_path("services", &name), None)?;
             }
         }
 

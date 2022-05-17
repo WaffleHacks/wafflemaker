@@ -100,3 +100,13 @@ impl Client {
         Ok(())
     }
 }
+
+/// Ensure service names with slashes `/` in the name are not url encoded
+pub fn service_path<'s>(base: &'s str, service: &'s str) -> Vec<&'s str> {
+    let mut path = vec![base];
+    for part in service.split('/') {
+        path.push(part)
+    }
+
+    path
+}
