@@ -11,7 +11,7 @@ use tokio::{
     sync::broadcast,
     task,
 };
-use tracing::info;
+use tracing::{info, Level};
 use tracing_subscriber::{
     fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
@@ -148,14 +148,18 @@ async fn wait_for_exit() -> Result<()> {
 }
 
 /// Generate a registry for tracing
-fn init_tracing<E: Into<EnvFilter>>(filter: E) {
-    let sentry = sentry_tracing::layer().filter(sentry_tracing::default_filter);
+fn init_tracing(raw_filter: String) {
+    let filter = EnvFilter::builder()
+        .with_default_directive(Level::INFO.into())
+        .with_env_var("RUST_LOG")
+        .parse_lossy(raw_filter);
+
     let fmt = tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_span_events(FmtSpan::CLOSE)
         .finish();
 
-    fmt.with(sentry).init();
+    fmt.with(sentry_tracing::layer()).init();
 }
 
 /// Generate configuration for Sentry
