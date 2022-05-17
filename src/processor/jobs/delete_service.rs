@@ -62,7 +62,7 @@ impl Job for DeleteService {
             .await
             .is_err()
         {
-            debug!("no database role configured");
+            debug!("no default database role configured");
         }
 
         info!("successfully deleted deployment");
