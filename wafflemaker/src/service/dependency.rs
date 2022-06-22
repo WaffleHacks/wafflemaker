@@ -128,7 +128,7 @@ mod tests {
             };
         }
 
-        let raw = fs::read("./testdata/service/dependency_dynamic.toml")
+        let raw = fs::read("testdata/service/dependency_dynamic.toml")
             .expect("failed to parse test service");
         let parsed = toml::from_slice::<DynamicTest>(&raw).expect("failed to parse toml");
 
@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn simple() {
-        let raw = fs::read("./testdata/service/dependency_simple.toml")
+        let raw = fs::read("testdata/service/dependency_simple.toml")
             .expect("failed to parse test service");
         let parsed = toml::from_slice::<SimpleTest>(&raw).expect("failed to parse toml");
 

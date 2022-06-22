@@ -206,7 +206,7 @@ mod tests {
 
     #[tokio::test]
     async fn parse_config() {
-        parse("./wafflemaker.example.toml")
+        parse("../wafflemaker.example.toml")
             .await
             .expect("failed to parse configuration");
         let config = instance();

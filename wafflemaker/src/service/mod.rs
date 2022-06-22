@@ -152,7 +152,7 @@ mod tests {
 
     #[tokio::test]
     async fn deserialize() {
-        let service = Service::parse("./example-service.toml")
+        let service = Service::parse("../example-service.toml")
             .await
             .expect("failed to parse service");
 
@@ -174,7 +174,7 @@ mod tests {
 
     #[tokio::test]
     async fn defaults() {
-        let service = Service::parse("./testdata/service/minimal.toml")
+        let service = Service::parse("testdata/service/minimal.toml")
             .await
             .expect("failed to parse service");
 
