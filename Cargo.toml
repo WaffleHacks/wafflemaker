@@ -3,7 +3,7 @@ name = "wafflemaker"
 description = "WaffleHack's application deployment service"
 version = "0.3.3"
 authors = ["Alex Krantz <alex@krantz.dev>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
