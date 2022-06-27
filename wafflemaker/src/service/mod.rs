@@ -55,7 +55,9 @@ impl Service {
 /// All the possible external dependencies a service can require.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Dependencies {
+    #[serde(default)]
     postgres: DynamicDependency,
+    #[serde(default)]
     redis: SimpleDependency,
 }
 
@@ -189,5 +191,15 @@ mod tests {
         assert_eq!(service.web.enabled, true);
         assert_eq!(service.web.domain, None);
         assert_eq!(service.web.path, None);
+    }
+
+    #[tokio::test]
+    async fn missing_dependencies() {
+        let service = Service::parse("testdata/service/missing_dependencies.toml")
+            .await
+            .expect("failed to parse service");
+
+        assert_eq!(service.dependencies.redis(), Some("REDIS_URL"));
+        assert_eq!(service.dependencies.postgres("testing"), None);
     }
 }

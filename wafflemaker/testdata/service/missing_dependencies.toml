@@ -1,0 +1,6 @@
+[docker]
+  image = "wafflehacks/cms"
+  tag = "develop"
+
+[dependencies]
+  redis = true
