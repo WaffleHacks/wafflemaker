@@ -3,7 +3,7 @@ use sentry::{
     integrations::{anyhow::capture_anyhow, tracing as sentry_tracing},
     ClientOptions, IntoDsn,
 };
-use std::net::SocketAddr;
+use std::{env, net::SocketAddr};
 use structopt::StructOpt;
 use tokio::{
     fs,
@@ -11,10 +11,8 @@ use tokio::{
     sync::broadcast,
     task,
 };
-use tracing::{info, Level};
-use tracing_subscriber::{
-    fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
-};
+use tracing::info;
+use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt};
 use warp::Filter;
 
 use args::Args;
@@ -46,9 +44,6 @@ async fn main() -> Result<()> {
         .context("Failed to load configuration")?;
     let configuration = config::instance();
     let address = cli.address.unwrap_or(configuration.agent.address);
-    let log_filter = cli
-        .log_level
-        .unwrap_or_else(|| configuration.agent.log.clone());
 
     // Ensure the clone directory exists
     if !configuration.git.clone_to.exists() {
@@ -58,7 +53,7 @@ async fn main() -> Result<()> {
     }
 
     // Setup logging
-    init_tracing(log_filter);
+    init_tracing(cli.log_level);
 
     // Initialize sentry
     let _guard = sentry::init(sentry_config(&configuration.agent.sentry)?);
@@ -148,18 +143,20 @@ async fn wait_for_exit() -> Result<()> {
 }
 
 /// Generate a registry for tracing
-fn init_tracing(raw_filter: String) {
-    let filter = EnvFilter::builder()
-        .with_default_directive(Level::INFO.into())
-        .with_env_var("RUST_LOG")
-        .parse_lossy(raw_filter);
+fn init_tracing(filter: Option<String>) {
+    if let Some(filter) = filter {
+        env::set_var("RUST_LOG", filter);
+    }
 
-    let fmt = tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .with_span_events(FmtSpan::CLOSE)
-        .finish();
+    let sentry = sentry_tracing::layer()
+        .event_filter(sentry_tracing::default_event_filter)
+        .span_filter(sentry_tracing::default_span_filter);
 
-    fmt.with(sentry_tracing::layer()).init();
+    tracing_subscriber::registry()
+        .with(console_subscriber::spawn())
+        .with(tracing_subscriber::fmt::layer().with_span_events(FmtSpan::CLOSE))
+        .with(sentry)
+        .init();
 }
 
 /// Generate configuration for Sentry
