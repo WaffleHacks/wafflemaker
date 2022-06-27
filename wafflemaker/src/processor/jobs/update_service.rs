@@ -46,7 +46,7 @@ impl Job for UpdateService {
 
         // Create the base container creation args
         let mut options = CreateOpts::builder()
-            .name(&*self.name)
+            .name(&*self.name.sanitized)
             .image(&service.docker.image, &service.docker.tag);
 
         if service.web.enabled {

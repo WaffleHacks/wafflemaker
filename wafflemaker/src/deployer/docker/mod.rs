@@ -1,6 +1,7 @@
 use super::{CreateOpts, Deployer, Result};
 use crate::config::Connection;
 use async_trait::async_trait;
+use bollard::container::CreateContainerOptions;
 use bollard::{
     container::{Config as CreateContainerConfig, NetworkingConfig, RemoveContainerOptions},
     errors::Error as BollardError,
@@ -171,6 +172,15 @@ impl Deployer for Docker {
 
         tree.insert("image", options.image.as_str())?;
 
+        // Generate a (hopefully) collision-resistant name
+        let suffix = ChaCha20Rng::from_rng(rand::thread_rng())
+            .unwrap()
+            .sample_iter(&Alphanumeric)
+            .take(8)
+            .map(char::from)
+            .collect::<String>();
+        let name = format!("{}-{}", &options.name, suffix);
+
         let environment = options
             .environment
             .into_iter()
@@ -201,27 +211,19 @@ impl Deployer for Docker {
         }
 
         if let Some(routing) = &options.routing {
-            let suffix = ChaCha20Rng::from_rng(rand::thread_rng())
-                .unwrap()
-                .sample_iter(&Alphanumeric)
-                .take(8)
-                .map(char::from)
-                .collect::<String>();
-            let router_name = format!("{}-{}", options.name.replace('/', "_"), suffix);
-
             // Add routing label
             let rule = match &routing.path {
                 Some(p) => format!("Host(`{}`) && PathPrefix(`{}`)", routing.domain, p),
                 None => format!("Host(`{}`)", routing.domain),
             };
-            labels.insert(format!("traefik.http.routers.{}.rule", router_name), rule);
+            labels.insert(format!("traefik.http.routers.{}.rule", &name), rule);
 
             // Add path prefix middleware if necessary
             if let Some(path) = &routing.path {
-                let middleware_name = format!("{}-strip", router_name);
+                let middleware_name = format!("{}-strip", &name);
 
                 labels.insert(
-                    format!("traefik.http.routers.{}.middlewares", router_name),
+                    format!("traefik.http.routers.{}.middlewares", &name),
                     format!("{}@docker", middleware_name),
                 );
                 labels.insert(
@@ -235,7 +237,7 @@ impl Deployer for Docker {
 
             // Enable HTTPS
             labels.insert(
-                format!("traefik.http.routers.{}.tls.certresolver", router_name),
+                format!("traefik.http.routers.{}.tls.certresolver", &name),
                 "le".to_string(),
             );
 
@@ -259,10 +261,7 @@ impl Deployer for Docker {
                         info!("found port {} for service", port);
 
                         labels.insert(
-                            format!(
-                                "traefik.http.services.{}.loadbalancer.server.port",
-                                router_name
-                            ),
+                            format!("traefik.http.services.{}.loadbalancer.server.port", &name),
                             port,
                         );
                     }
@@ -292,7 +291,7 @@ impl Deployer for Docker {
 
         let result = self
             .instance
-            .create_container::<&str, _>(None, config)
+            .create_container(Some(CreateContainerOptions { name }), config)
             .await?;
 
         tree.insert("id", result.id.as_str())?;
