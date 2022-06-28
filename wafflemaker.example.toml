@@ -8,6 +8,10 @@
   # Default: "info"
   log = "info"
 
+  # Enable Tokio console for detailed debugging
+  # NOTE: this generates TONS of logs and overrides the default log level
+  tokio-console = false
+
   # An optional Sentry ingest URL for your application
   # Sentry is used for real-time error monitoring of our application
   #sentry = "https://abcdef0123456789.ingest.sentry.io/1234567"

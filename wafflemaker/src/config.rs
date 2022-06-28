@@ -42,6 +42,8 @@ pub struct Config {
 pub struct Agent {
     pub address: SocketAddr,
     pub log: String,
+    #[serde(rename = "tokio-console", default)]
+    pub tokio_console: bool,
     pub sentry: Option<String>,
     pub workers: u32,
 }
@@ -204,6 +206,7 @@ mod tests {
 
         assert_eq!("127.0.0.1:8000", &config.agent.address.to_string());
         assert_eq!("info", &config.agent.log);
+        assert_eq!(false, config.agent.tokio_console);
         assert_eq!(2, config.agent.workers);
 
         assert_eq!(config.dependencies.len(), 2);

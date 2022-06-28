@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
+use console_subscriber::ConsoleLayer;
 use sentry::{
     integrations::{anyhow::capture_anyhow, tracing as sentry_tracing},
     ClientOptions, IntoDsn,
 };
-use std::{env, net::SocketAddr};
+use std::net::SocketAddr;
 use structopt::StructOpt;
 use tokio::{
     fs,
@@ -12,7 +13,9 @@ use tokio::{
     task,
 };
 use tracing::info;
-use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{
+    fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
+};
 use warp::Filter;
 
 use args::Args;
@@ -53,7 +56,11 @@ async fn main() -> Result<()> {
     }
 
     // Setup logging
-    init_tracing(cli.log_level);
+    init_tracing(
+        cli.log_level
+            .unwrap_or_else(|| configuration.agent.log.clone()),
+        configuration.agent.tokio_console,
+    );
 
     // Initialize sentry
     let _guard = sentry::init(sentry_config(&configuration.agent.sentry)?);
@@ -143,20 +150,29 @@ async fn wait_for_exit() -> Result<()> {
 }
 
 /// Generate a registry for tracing
-fn init_tracing(filter: Option<String>) {
-    if let Some(filter) = filter {
-        env::set_var("RUST_LOG", filter);
+fn init_tracing(raw_filter: String, enable_console: bool) {
+    let filter = EnvFilter::builder().parse_lossy(raw_filter);
+
+    if enable_console {
+        tracing_subscriber::registry()
+            .with(ConsoleLayer::builder().with_default_env().spawn())
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_span_events(FmtSpan::CLOSE)
+                    .with_filter(filter),
+            )
+            .with(sentry_tracing::layer())
+            .init();
+    } else {
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_span_events(FmtSpan::CLOSE)
+                    .with_filter(filter),
+            )
+            .with(sentry_tracing::layer())
+            .init();
     }
-
-    let sentry = sentry_tracing::layer()
-        .event_filter(sentry_tracing::default_event_filter)
-        .span_filter(sentry_tracing::default_span_filter);
-
-    tracing_subscriber::registry()
-        .with(console_subscriber::spawn())
-        .with(tracing_subscriber::fmt::layer().with_span_events(FmtSpan::CLOSE))
-        .with(sentry)
-        .init();
 }
 
 /// Generate configuration for Sentry
