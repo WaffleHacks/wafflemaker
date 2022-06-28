@@ -2,4 +2,4 @@ mod docker;
 mod github;
 
 pub use docker::Docker;
-pub use github::Github;
+pub use github::{Github, Repository};

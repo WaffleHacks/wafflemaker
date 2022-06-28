@@ -1,19 +1,26 @@
 use super::{
-    models::{Docker, Github},
+    models::{Docker, Github, Repository},
     validators,
 };
 use crate::{
     config, git,
-    http::{BodyDeserializeError, GitError, UndeployableError},
     processor::jobs::{self, PlanUpdate, UpdateService},
     service::registry,
 };
-use bytes::Bytes;
+use axum::{
+    body::Bytes,
+    extract::TypedHeader,
+    headers::{authorization::Basic, Authorization, HeaderMap},
+    http::StatusCode,
+    Json,
+};
 use tracing::{error, info};
-use warp::{http::StatusCode, reject, Rejection, Reply};
 
 /// Handle webhooks from Docker image pushes
-pub async fn docker(body: Docker, authorization: String) -> Result<impl Reply, Rejection> {
+pub async fn docker(
+    Json(body): Json<Docker>,
+    TypedHeader(authorization): TypedHeader<Authorization<Basic>>,
+) -> Result<StatusCode, StatusCode> {
     let cfg = config::instance();
     validators::docker(authorization, &cfg.webhooks.docker)?;
 
@@ -54,31 +61,46 @@ pub async fn docker(body: Docker, authorization: String) -> Result<impl Reply, R
 }
 
 /// Handle webhooks from GitHub repository pushes
-pub async fn github(raw_body: Bytes, raw_signature: String) -> Result<impl Reply, Rejection> {
+pub async fn github(raw_body: Bytes, headers: HeaderMap) -> Result<StatusCode, StatusCode> {
     let cfg = config::instance();
-    validators::github(&raw_body, raw_signature, cfg.webhooks.github.as_bytes())?;
+    validators::github(
+        &raw_body,
+        headers.get("X-Hub-Signature-256"),
+        cfg.webhooks.github.as_bytes(),
+    )?;
 
-    let body: Github =
-        serde_json::from_slice(&raw_body).map_err(|_| reject::custom(BodyDeserializeError))?;
+    let body: Github = serde_json::from_slice(&raw_body).map_err(|_| StatusCode::BAD_REQUEST)?;
     info!("got new {} hook", body.name());
 
     sentry::configure_scope(|scope| {
         scope.set_tag("hook.type", body.name());
     });
 
-    let (before, after, reference, repository) = match body {
-        Github::Ping { zen, hook_id } => {
-            info!("received ping from hook {}: {}", hook_id, zen);
-            return Ok(StatusCode::NO_CONTENT);
-        }
+    match body {
+        Github::Ping { zen, hook_id } => Ok(github_ping_event(zen, hook_id)),
         Github::Push {
             after,
             before,
             reference,
             repository,
-        } => (before, after, reference, repository),
-    };
+        } => github_push_event(after, before, reference, repository).await,
+    }
+}
 
+/// Handle a GitHub ping event
+fn github_ping_event(zen: String, hook_id: i64) -> StatusCode {
+    info!(%zen, %hook_id, "received ping");
+    StatusCode::NO_CONTENT
+}
+
+/// Handle a GitHub push event
+async fn github_push_event(
+    after: String,
+    before: String,
+    reference: String,
+    repository: Repository,
+) -> Result<StatusCode, StatusCode> {
+    let cfg = config::instance();
     sentry::configure_scope(|scope| {
         scope.set_tag("hook.repository", &repository.name);
         scope.set_tag("hook.after", &after);
@@ -88,14 +110,22 @@ pub async fn github(raw_body: Bytes, raw_signature: String) -> Result<impl Reply
 
     // Check if the repository is allowed to be pulled
     if repository.name != cfg.git.repository || !reference.ends_with(&cfg.git.branch) {
-        return Err(reject::custom(UndeployableError));
+        return Err(StatusCode::FORBIDDEN);
     }
 
     // Pull the repository
-    git::instance()
+    if let Err(e) = git::instance()
         .pull(repository.clone_url, reference, after.clone())
         .await
-        .map_err(|e| reject::custom(GitError(e)))?;
+    {
+        error!(
+            "error while interacting with local repo: ({:?}, {:?}) {}",
+            e.class(),
+            e.code(),
+            e.message()
+        );
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
 
     // Start the update
     jobs::dispatch(PlanUpdate::new(&cfg.git.clone_to, before, after));

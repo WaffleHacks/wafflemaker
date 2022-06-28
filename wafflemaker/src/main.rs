@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use axum::Server;
 use console_subscriber::ConsoleLayer;
 use sentry::{
     integrations::{anyhow::capture_anyhow, tracing as sentry_tracing},
@@ -16,7 +17,6 @@ use tracing::info;
 use tracing_subscriber::{
     fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
 };
-use warp::Filter;
 
 use args::Args;
 
@@ -107,19 +107,16 @@ async fn run_server(address: SocketAddr, configuration: &Config) -> Result<()> {
     // Start the management interface
     management::start(stop_tx.clone())?;
 
-    // Setup the routes
-    let routes = webhooks::routes().recover(http::recover);
-
     // Bind the server
-    let (addr, server) = warp::serve(routes)
-        .try_bind_with_graceful_shutdown(address, async move {
+    let server = Server::bind(&address)
+        .serve(webhooks::routes().into_make_service())
+        .with_graceful_shutdown(async move {
             stop_rx.recv().await.ok();
-        })
-        .with_context(|| format!("failed to bind to {}", address))?;
+        });
 
     // Start the server
     task::spawn(server);
-    info!("listening on {}", addr);
+    info!("listening on {}", address);
 
     // Wait for shutdown
     wait_for_exit()
