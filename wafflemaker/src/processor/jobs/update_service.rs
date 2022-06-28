@@ -1,6 +1,6 @@
 use super::Job;
 use crate::{
-    config,
+    config::{self, Dependency},
     deployer::{self, CreateOpts},
     dns, fail_notify,
     notifier::{self, Event, State},
@@ -116,32 +116,46 @@ impl Job for UpdateService {
         }
         info!("loaded secrets from vault into environment");
 
-        if let Some(postgres) = service.dependencies.postgres(&self.name.sanitized) {
-            // Create the role if it doesn't exist
-            let roles = fail!(vault::instance().list_database_roles().await);
-            if !roles.contains(&postgres.role.to_owned()) {
-                fail!(vault::instance().create_database_role(postgres.role).await);
+        // Insert any dependencies
+        for (key, spec) in &config.dependencies {
+            match spec {
+                Dependency::Static { value, default_env } => {
+                    if let Some(name) = service.dependencies.simple(&key, &default_env) {
+                        options = options.environment(name.to_uppercase(), value);
+                        debug!(name = %name, dependency = %key, "added static dependency");
+                    }
+                }
+                Dependency::Postgres {
+                    connection_template,
+                    default_env,
+                } => {
+                    if let Some(postgres) =
+                        service
+                            .dependencies
+                            .dynamic(&key, &default_env, &self.name.sanitized)
+                    {
+                        // Create the role if it doesn't exist
+                        let roles = fail!(vault::instance().list_database_roles().await);
+                        if !roles.contains(&postgres.role.to_owned()) {
+                            fail!(vault::instance().create_database_role(postgres.role).await);
+                        }
+
+                        let (credentials, lease) = fail!(
+                            vault::instance()
+                                .get_database_credentials(postgres.role)
+                                .await
+                        );
+                        leases.push(lease);
+                        let connection_url = connection_template
+                            .replace("{{username}}", &credentials.username)
+                            .replace("{{password}}", &credentials.password)
+                            .replace("{{database}}", postgres.role);
+
+                        options = options.environment(postgres.name.to_uppercase(), connection_url);
+                        debug!(name = %postgres.name, dependency = %key, "added postgres dependency");
+                    }
+                }
             }
-
-            let (credentials, lease) = fail!(
-                vault::instance()
-                    .get_database_credentials(postgres.role)
-                    .await
-            );
-            leases.push(lease);
-            let connection_url = &config
-                .dependencies
-                .postgres
-                .replace("{{username}}", &credentials.username)
-                .replace("{{password}}", &credentials.password)
-                .replace("{{database}}", postgres.role);
-
-            options = options.environment(postgres.name.to_uppercase(), connection_url);
-            debug!(name = %postgres.name, "added postgres database url");
-        }
-        if let Some(name) = service.dependencies.redis() {
-            options = options.environment(name.to_uppercase(), &config.dependencies.redis);
-            debug!(name = %name, "added redis url");
         }
         info!("loaded service dependencies into environment");
 

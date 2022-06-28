@@ -2,6 +2,7 @@ use anyhow::Result;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::{
+    collections::HashMap,
     net::SocketAddr,
     num::ParseIntError,
     path::{Path, PathBuf},
@@ -27,7 +28,7 @@ pub fn instance() -> &'static Config {
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub agent: Agent,
-    pub dependencies: Dependencies,
+    pub dependencies: HashMap<String, Dependency>,
     pub deployment: Deployment,
     pub dns: Dns,
     pub git: Git,
@@ -46,9 +47,16 @@ pub struct Agent {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Dependencies {
-    pub postgres: String,
-    pub redis: String,
+#[serde(tag = "type", rename_all = "kebab-case")]
+pub enum Dependency {
+    Static {
+        value: String,
+        default_env: String,
+    },
+    Postgres {
+        connection_template: String,
+        default_env: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -184,7 +192,7 @@ pub struct Webhooks {
 
 #[cfg(test)]
 mod tests {
-    use super::{instance, parse, Connection, Notifier};
+    use super::{instance, parse, Connection, Dependency, Notifier};
     use std::time::Duration;
 
     #[tokio::test]
@@ -198,11 +206,22 @@ mod tests {
         assert_eq!("info", &config.agent.log);
         assert_eq!(2, config.agent.workers);
 
-        assert_eq!(
-            "postgres://{{username}}:{{password}}@127.0.0.1:5432/{{database}}",
-            config.dependencies.postgres
-        );
-        assert_eq!("redis://127.0.0.1:6379", config.dependencies.redis);
+        assert_eq!(config.dependencies.len(), 2);
+        {
+            let dependency = config.dependencies.get("postgres").unwrap();
+            assert!(matches!(
+                dependency,
+                Dependency::Postgres { connection_template, default_env }
+                if connection_template == "postgres://{{username}}:{{password}}@127.0.0.1:5432/{{database}}" && default_env == "POSTGRES_URL"
+            ));
+        }
+        {
+            let dependency = config.dependencies.get("redis").unwrap();
+            assert!(matches!(
+                dependency,
+                Dependency::Static { value, default_env } if value == "redis://127.0.0.1:6379" && default_env == "REDIS_URL"
+            ));
+        }
 
         assert_eq!("wafflehacks.tech", &config.deployment.domain);
         assert_eq!(Connection::Local, config.deployment.connection);

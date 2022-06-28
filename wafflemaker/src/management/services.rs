@@ -40,17 +40,11 @@ async fn list() -> Result<impl Reply, Rejection> {
 
 #[derive(Debug, Serialize)]
 struct Response {
-    dependencies: DependenciesResponse,
+    dependencies: Vec<String>,
     image: String,
     automatic_updates: bool,
     domain: Option<String>,
     deployment_id: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct DependenciesResponse {
-    postgres: bool,
-    redis: bool,
 }
 
 /// Get the configuration for a service
@@ -61,11 +55,6 @@ async fn get(service: Tail) -> Result<impl Reply, Rejection> {
     let cfg = reg.get(service).ok_or_else(warp::reject::not_found)?;
 
     let deployment_id = deployer::instance().service_id(service).await?;
-
-    let dependencies = DependenciesResponse {
-        postgres: cfg.dependencies.postgres("").is_some(),
-        redis: cfg.dependencies.redis().is_some(),
-    };
 
     // Display the domain if it was added
     let domain = if cfg.web.enabled {
@@ -82,7 +71,7 @@ async fn get(service: Tail) -> Result<impl Reply, Rejection> {
     };
 
     Ok(warp::reply::json(&Response {
-        dependencies,
+        dependencies: cfg.dependencies.all(),
         image: format!("{}:{}", cfg.docker.image, cfg.docker.tag),
         automatic_updates: cfg.docker.update.automatic,
         domain,

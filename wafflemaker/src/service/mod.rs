@@ -6,12 +6,12 @@ use std::fmt::Debug;
 use std::{collections::HashMap, ffi::OsStr, path::Path};
 use tokio::fs;
 
-mod dependency;
+mod dependencies;
 mod name;
 pub mod registry;
 mod secret;
 
-use dependency::*;
+use dependencies::Dependencies;
 pub use name::ServiceName;
 pub use secret::{Format, Part as AWSPart, Secret};
 
@@ -49,25 +49,6 @@ impl Service {
             .join("/");
 
         ServiceName::new(name)
-    }
-}
-
-/// All the possible external dependencies a service can require.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct Dependencies {
-    #[serde(default)]
-    postgres: DynamicDependency,
-    #[serde(default)]
-    redis: SimpleDependency,
-}
-
-impl Dependencies {
-    pub fn postgres<'v>(&'v self, default_role: &'v str) -> Option<ResolvedDependency<'v>> {
-        self.postgres.resolve("POSTGRES_URL", default_role)
-    }
-
-    pub fn redis(&self) -> Option<&str> {
-        self.redis.resolve("REDIS_URL")
     }
 }
 
@@ -150,7 +131,7 @@ fn default_true() -> bool {
 #[cfg(test)]
 mod tests {
     use super::Service;
-    use crate::service::dependency::ResolvedDependency;
+    use crate::service::dependencies::ResolvedDependency;
 
     #[tokio::test]
     async fn deserialize() {
@@ -158,11 +139,14 @@ mod tests {
             .await
             .expect("failed to parse service");
 
+        assert_eq!(service.dependencies.all().len(), 2);
         assert_eq!(
-            service.dependencies.postgres("testing"),
+            service
+                .dependencies
+                .dynamic("postgres", "POSTGRES_URL", "testing"),
             Some(ResolvedDependency::new("DATABASE_URL", "testing"))
         );
-        assert_eq!(service.dependencies.redis(), None);
+        assert_eq!(service.dependencies.simple("redis", "REDIS_URL"), None);
         assert_eq!(service.docker.image, "wafflehacks/cms");
         assert_eq!(service.docker.tag, "develop");
         assert_eq!(service.docker.update.automatic, true);
@@ -180,8 +164,14 @@ mod tests {
             .await
             .expect("failed to parse service");
 
-        assert_eq!(service.dependencies.postgres("testing"), None);
-        assert_eq!(service.dependencies.redis(), None);
+        assert_eq!(service.dependencies.all().len(), 0);
+        assert_eq!(
+            service
+                .dependencies
+                .dynamic("postgres", "testing", "testing"),
+            None
+        );
+        assert_eq!(service.dependencies.simple("redis", "testing"), None);
         assert_eq!(service.docker.image, "wafflehacks/cms");
         assert_eq!(service.docker.tag, "develop");
         assert_eq!(service.docker.update.automatic, true);
@@ -199,7 +189,16 @@ mod tests {
             .await
             .expect("failed to parse service");
 
-        assert_eq!(service.dependencies.redis(), Some("REDIS_URL"));
-        assert_eq!(service.dependencies.postgres("testing"), None);
+        assert_eq!(service.dependencies.all().len(), 1);
+        assert_eq!(
+            service.dependencies.simple("redis", "REDIS_URL"),
+            Some("REDIS_URL")
+        );
+        assert_eq!(
+            service
+                .dependencies
+                .dynamic("postgres", "testing", "testing"),
+            None
+        );
     }
 }
