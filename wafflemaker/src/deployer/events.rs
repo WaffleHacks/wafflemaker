@@ -1,20 +1,21 @@
-use crate::{
-    config::{self, Connection, DeploymentEngine},
-    deployer,
-};
+use super::instance;
 use bollard::models::SystemEventsResponse;
-use bollard::{system::EventsOptions, Docker, API_DEFAULT_VERSION};
+use bollard::{system::EventsOptions, Docker};
 use std::collections::HashMap;
 use tokio::{select, sync::broadcast::Receiver};
 use tokio_stream::StreamExt;
 use tracing::{debug, error, info, info_span, instrument, warn};
 
 /// Watch the docker events for any unexpected changes in container state
-#[instrument(skip(stop))]
-pub async fn watch(mut stop: Receiver<()>) {
-    let client = get_client();
+#[instrument(skip_all)]
+pub async fn watch(client: Docker, mut stop: Receiver<()>) {
     let mut events = client.events(Some(EventsOptions {
-        filters: event_filters(),
+        filters: {
+            let mut filters = HashMap::new();
+            filters.insert("scope", vec!["local"]);
+            filters.insert("type", vec!["container"]);
+            filters
+        },
         ..Default::default()
     }));
 
@@ -41,7 +42,7 @@ pub async fn watch(mut stop: Receiver<()>) {
                 let exited_non_zero = matches!(event.action, Action::Exit { code } if code != 0);
                 if exited_non_zero && (previous.is_none() || matches!(previous, Some(event) if event != &Action::Kill)) {
                     warn!(parent: &span, id = %event.id, "container exited unexpectedly");
-                    match deployer::instance().start(&event.id).await {
+                    match instance().start(&event.id).await {
                         Ok(_) => { info!(parent: &span, id = %event.id, "restarted container"); },
                         Err(e) => { error!(parent: &span, error = %e, "failed to restart container"); },
                     }
@@ -56,50 +57,6 @@ pub async fn watch(mut stop: Receiver<()>) {
             info!("stopped deployer event listener");
         }
     }
-}
-
-/// Create a new docker client. This is infallible as all the validation has already occurred.
-fn get_client() -> Docker {
-    // Get the config
-    let engine = &config::instance().deployment.engine;
-    let (connection, endpoint, timeout) = match engine {
-        DeploymentEngine::Docker {
-            connection,
-            endpoint,
-            timeout,
-            ..
-        } => (connection, endpoint, timeout),
-    };
-
-    match connection {
-        Connection::Local => {
-            Docker::connect_with_local(endpoint, *timeout, API_DEFAULT_VERSION).unwrap()
-        }
-        Connection::Http => {
-            Docker::connect_with_http(endpoint, *timeout, API_DEFAULT_VERSION).unwrap()
-        }
-        Connection::Ssl {
-            ca,
-            certificate,
-            key,
-        } => Docker::connect_with_ssl(
-            endpoint,
-            key,
-            certificate,
-            ca,
-            *timeout,
-            API_DEFAULT_VERSION,
-        )
-        .unwrap(),
-    }
-}
-
-/// Get the filters for the events to listen to. Only listens for local container changes.
-fn event_filters() -> HashMap<&'static str, Vec<&'static str>> {
-    let mut filters = HashMap::new();
-    filters.insert("scope", vec!["local"]);
-    filters.insert("type", vec!["container"]);
-    filters
 }
 
 #[derive(Debug, PartialEq)]

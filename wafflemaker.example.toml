@@ -30,11 +30,6 @@
   # The base domain where services are deployed on
   domain = "wafflehacks.tech"
 
-  # The type of deployer to use
-  # Current supports:
-  #   - docker (or any docker-compatible runtime)
-  type = "docker"
-
   # How to connect to docker
   # Options:
   #   - local     connect via unix socket or local pipe

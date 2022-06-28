@@ -55,34 +55,17 @@ pub struct Dependencies {
 pub struct Deployment {
     pub domain: String,
     #[serde(flatten)]
-    pub engine: DeploymentEngine,
+    pub connection: Connection,
+    pub endpoint: String,
+    pub timeout: u64,
+    pub network: String,
+    pub state: PathBuf,
 }
 
 impl Default for Deployment {
     fn default() -> Deployment {
         Deployment {
             domain: "wafflehacks.tech".into(),
-            engine: Default::default(),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum DeploymentEngine {
-    Docker {
-        #[serde(flatten)]
-        connection: Connection,
-        endpoint: String,
-        timeout: u64,
-        network: String,
-        state: PathBuf,
-    },
-}
-
-impl Default for DeploymentEngine {
-    fn default() -> DeploymentEngine {
-        DeploymentEngine::Docker {
             connection: Default::default(),
             endpoint: "unix:///var/run/docker.sock".into(),
             timeout: 10,
@@ -201,7 +184,7 @@ pub struct Webhooks {
 
 #[cfg(test)]
 mod tests {
-    use super::{instance, parse, Connection, DeploymentEngine, Notifier};
+    use super::{instance, parse, Connection, Notifier};
     use std::time::Duration;
 
     #[tokio::test]
@@ -222,22 +205,11 @@ mod tests {
         assert_eq!("redis://127.0.0.1:6379", config.dependencies.redis);
 
         assert_eq!("wafflehacks.tech", &config.deployment.domain);
-        assert!(matches!(
-            config.deployment.engine,
-            DeploymentEngine::Docker { .. }
-        ));
-        let DeploymentEngine::Docker {
-            connection,
-            endpoint,
-            network,
-            timeout,
-            state,
-        } = &config.deployment.engine;
-        assert_eq!(&Connection::Local, connection);
-        assert_eq!("unix:///var/run/docker.sock", endpoint.as_str());
-        assert_eq!(&120, timeout);
-        assert_eq!("traefik", network);
-        assert_eq!("./state", state.to_str().unwrap());
+        assert_eq!(Connection::Local, config.deployment.connection);
+        assert_eq!("unix:///var/run/docker.sock", config.deployment.endpoint);
+        assert_eq!(120, config.deployment.timeout);
+        assert_eq!("traefik", config.deployment.network);
+        assert_eq!("./state", config.deployment.state.to_str().unwrap());
 
         assert_eq!("dns:", &config.dns.key_prefix);
         assert_eq!("redis://127.0.0.1:6379", &config.dns.redis);

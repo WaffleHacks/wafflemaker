@@ -1,9 +1,10 @@
-use super::{CreateOpts, Deployer, Result};
-use crate::config::Connection;
-use async_trait::async_trait;
-use bollard::container::CreateContainerOptions;
+use super::{events, options::CreateOpts, Result};
+use crate::config::{Connection, Deployment};
 use bollard::{
-    container::{Config as CreateContainerConfig, NetworkingConfig, RemoveContainerOptions},
+    container::{
+        Config as CreateContainerConfig, CreateContainerOptions, NetworkingConfig,
+        RemoveContainerOptions,
+    },
     errors::Error as BollardError,
     image::CreateImageOptions,
     models::{EndpointSettings, HostConfig},
@@ -13,14 +14,37 @@ use futures::stream::StreamExt;
 use rand::{distributions::Alphanumeric, Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use sled::{Config, Db, Mode};
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::HashMap, fs};
 use tokio::sync::broadcast::Receiver;
 use tracing::{debug, error, info, instrument};
 
-mod events;
+/// Create a new connection to the Docker API from the configuration
+pub(crate) fn connect(config: &Deployment) -> Result<Bollard> {
+    let docker = match &config.connection {
+        Connection::Local => {
+            Bollard::connect_with_local(&config.endpoint, config.timeout, API_DEFAULT_VERSION)?
+        }
+        Connection::Http => {
+            Bollard::connect_with_http(&config.endpoint, config.timeout, API_DEFAULT_VERSION)?
+        }
+        Connection::Ssl {
+            ca,
+            certificate,
+            key,
+        } => Bollard::connect_with_ssl(
+            &config.endpoint,
+            key,
+            certificate,
+            ca,
+            config.timeout,
+            API_DEFAULT_VERSION,
+        )?,
+    };
+    Ok(docker)
+}
 
 #[derive(Debug)]
-pub struct Docker {
+pub struct Deployer {
     instance: Bollard,
     state: Db,
     network: String,
@@ -28,62 +52,31 @@ pub struct Docker {
     dns: String,
 }
 
-impl Docker {
+impl Deployer {
     /// Connect to a new docker instance
     #[instrument(
         name = "docker",
-        skip(connection, endpoint, path),
+        skip(config, stop),
         fields(
-            connection = connection.kind(),
-            endpoint = endpoint.as_ref(),
-            state = path.as_ref().to_str().unwrap(),
-            network = network.as_ref(),
+            connection = config.connection.kind(),
+            endpoint = config.endpoint,
+            state = config.state.to_str().unwrap(),
+            network = config.network,
         )
     )]
-    pub async fn new<S: AsRef<str>, P: AsRef<Path>>(
-        connection: &Connection,
-        endpoint: S,
-        timeout: &u64,
-        dns_server: &str,
-        network: S,
-        path: P,
-        stop: Receiver<()>,
-    ) -> Result<Self> {
-        let endpoint = endpoint.as_ref();
-        let path = path.as_ref();
-        let network = network.as_ref();
-
+    pub async fn new(config: &Deployment, dns_server: &str, stop: Receiver<()>) -> Result<Self> {
         // Create the connection
-        let instance = match connection {
-            Connection::Local => {
-                Bollard::connect_with_local(endpoint, *timeout, API_DEFAULT_VERSION)?
-            }
-            Connection::Http => {
-                Bollard::connect_with_http(endpoint, *timeout, API_DEFAULT_VERSION)?
-            }
-            Connection::Ssl {
-                ca,
-                certificate,
-                key,
-            } => Bollard::connect_with_ssl(
-                endpoint,
-                key,
-                certificate,
-                ca,
-                *timeout,
-                API_DEFAULT_VERSION,
-            )?,
-        };
+        let instance = connect(config)?;
         debug!("created docker connection");
 
         // Create the database folder if not exists
-        if !path.exists() {
-            fs::create_dir_all(path)?;
+        if !config.state.exists() {
+            fs::create_dir_all(&config.state)?;
         }
 
         // Open the state database with a 32MB cache and save to disk every 1s
         let state = Config::new()
-            .path(path)
+            .path(&config.state)
             .cache_capacity(32 * 1024 * 1024)
             .flush_every_ms(Some(1000))
             .mode(Mode::HighThroughput)
@@ -91,7 +84,9 @@ impl Docker {
             .open()?;
 
         // Fetch the network information
-        let network = instance.inspect_network::<&str>(network, None).await?;
+        let network = instance
+            .inspect_network::<&str>(&config.network, None)
+            .await?;
         let network_name = network.name.unwrap();
         let network_config = NetworkingConfig {
             endpoints_config: {
@@ -107,7 +102,12 @@ impl Docker {
             },
         };
 
-        tokio::task::spawn(events::watch(stop));
+        tokio::task::spawn({
+            // This is safe to unwrap since we already created a connection earlier
+            let instance = connect(config).unwrap();
+
+            events::watch(instance, stop)
+        });
 
         Ok(Self {
             instance,
@@ -123,12 +123,9 @@ impl Docker {
         let tree = self.state.open_tree(name.as_ref())?;
         get_string(&tree, "id").transpose().unwrap()
     }
-}
 
-#[async_trait]
-impl Deployer for Docker {
     #[instrument(skip(self))]
-    async fn test(&self) -> Result<()> {
+    pub async fn test(&self) -> Result<()> {
         let info = self.instance.info().await?;
         let id = info.id.unwrap_or_default();
         info!(id = %id, "connected to docker");
@@ -137,7 +134,7 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn list(&self) -> Result<HashMap<String, String>> {
+    pub async fn list(&self) -> Result<HashMap<String, String>> {
         let mut mapping = HashMap::new();
         for tree_name in self.state.tree_names() {
             let id = get_string(&self.state.open_tree(&tree_name)?, "id")?;
@@ -153,7 +150,7 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn service_id(&self, name: &str) -> Result<Option<String>> {
+    pub async fn service_id(&self, name: &str) -> Result<Option<String>> {
         let tree = self.state.open_tree(name)?;
         get_string(&tree, "id")
     }
@@ -167,7 +164,7 @@ impl Deployer for Docker {
             image = %options.image),
         )
     ]
-    async fn create(&self, options: CreateOpts) -> Result<String> {
+    pub async fn create(&self, options: CreateOpts) -> Result<String> {
         let tree = self.state.open_tree(&options.name)?;
 
         tree.insert("image", options.image.as_str())?;
@@ -300,7 +297,7 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn start(&self, id: &str) -> Result<()> {
+    pub async fn start(&self, id: &str) -> Result<()> {
         let status = self.instance.start_container::<&str>(id, None).await;
         if let Err(e) = status {
             if !matches!(e, BollardError::DockerResponseNotModifiedError { .. }) {
@@ -311,7 +308,7 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn ip(&self, id: &str) -> Result<String> {
+    pub async fn ip(&self, id: &str) -> Result<String> {
         let info = self.instance.inspect_container(id, None).await?;
         let networks = info.network_settings.unwrap().networks.unwrap();
         let network = networks.get(&self.network.clone()).unwrap();
@@ -320,7 +317,7 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn stop(&self, id: &str) -> Result<()> {
+    pub async fn stop(&self, id: &str) -> Result<()> {
         let status = self.instance.stop_container(id, None).await;
         if let Err(e) = status {
             if !matches!(
@@ -335,7 +332,7 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn delete(&self, id: &str) -> Result<()> {
+    pub async fn delete(&self, id: &str) -> Result<()> {
         let status = self
             .instance
             .remove_container(
@@ -357,7 +354,7 @@ impl Deployer for Docker {
     }
 
     #[instrument(skip(self))]
-    async fn delete_by_name(&self, name: &str) -> Result<()> {
+    pub async fn delete_by_name(&self, name: &str) -> Result<()> {
         let id = self.id_from_name(&name)?;
         self.delete(&id).await?;
 
@@ -368,7 +365,7 @@ impl Deployer for Docker {
     }
 }
 
-impl Drop for Docker {
+impl Drop for Deployer {
     fn drop(&mut self) {
         if let Err(e) = self.state.flush() {
             error!("failed to flush state database: {}", e)
