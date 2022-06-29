@@ -1,23 +1,17 @@
 # The base agent configuration
 [agent]
-  # The port and address where the agent should listen to receive webhooks
-  address = "127.0.0.1:8000"
-
   # The logging specification in the RUST_LOG format, can be overridden
   # by the RUST_LOG environment variable
   # Default: "info"
   log = "info"
 
-  # The token for authenticating with the management API
-  management-token = "please-change-me"
+  # An optional Sentry ingest URL for your application
+  # Sentry is used for real-time error monitoring of our application
+  #sentry = "https://abcdef0123456789.ingest.sentry.io/1234567"
 
   # Enable Tokio console for detailed debugging
   # NOTE: this generates TONS of logs and overrides the default log level
   tokio-console = false
-
-  # An optional Sentry ingest URL for your application
-  # Sentry is used for real-time error monitoring of our application
-  #sentry = "https://abcdef0123456789.ingest.sentry.io/1234567"
 
   # The number of deployment processors to run
   workers = 2
@@ -110,6 +104,25 @@
   # The branch that gets deployed
   branch = "master"
 
+# Configuration for the API server
+[http]
+  # The port and address where the agent should listen to receive webhooks
+  address = "127.0.0.1:8000"
+
+  # The token for authenticating with the management API
+  management-token = "please-change-me"
+
+  [http.webhooks]
+    # DockerHub is used for notifying of updated images.
+    # This must be webhook authentication token for HTTP basic auth
+    # Must be in the format:
+    #   <something>:<something>
+    docker = "please-change:this-token"
+
+    # GitHub for receiving service configuration updates.
+    # This must be the webhook signing secret.
+    github = "please-change-this-secret"
+
 # Configuration for notifying of deployment status
 # There are two types of notifications: service and deployment.
 # Service notifications are sent when a service is updated, deleted, deployed, or stops unexpectedly.
@@ -182,15 +195,3 @@
   #   - second: s
   # Defaults to minutes (m) if not specified or a valid prefix is not found.
   token_interval = "24h"
-
-# Configuration for incoming webhooks
-[webhooks]
-  # DockerHub is used for notifying of updated images.
-  # This must be webhook authentication token for HTTP basic auth
-  # Must be in the format:
-  #   <something>:<something>
-  docker = "please-change:this-token"
-
-  # GitHub for receiving service configuration updates.
-  # This must be the webhook signing secret.
-  github = "please-change-this-secret"

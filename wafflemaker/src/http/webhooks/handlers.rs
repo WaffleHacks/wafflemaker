@@ -22,7 +22,7 @@ pub async fn docker(
     TypedHeader(authorization): TypedHeader<Authorization<Basic>>,
 ) -> Result<StatusCode, StatusCode> {
     let cfg = config::instance();
-    validators::docker(authorization, &cfg.webhooks.docker)?;
+    validators::docker(authorization, &cfg.http.webhooks.docker)?;
 
     info!(image = %body.repository.repo_name, tag = %body.push_data.tag, "got new image update hook");
 
@@ -66,7 +66,7 @@ pub async fn github(raw_body: Bytes, headers: HeaderMap) -> Result<StatusCode, S
     validators::github(
         &raw_body,
         headers.get("X-Hub-Signature-256"),
-        cfg.webhooks.github.as_bytes(),
+        cfg.http.webhooks.github.as_bytes(),
     )?;
 
     let body: Github = serde_json::from_slice(&raw_body).map_err(|_| StatusCode::BAD_REQUEST)?;

@@ -32,20 +32,17 @@ pub struct Config {
     pub deployment: Deployment,
     pub dns: Dns,
     pub git: Git,
+    pub http: Http,
     pub notifiers: Vec<Notifier>,
     pub secrets: Secrets,
-    pub webhooks: Webhooks,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Agent {
-    pub address: SocketAddr,
     pub log: String,
-    #[serde(rename = "management-token")]
-    pub management_token: String,
+    pub sentry: Option<String>,
     #[serde(rename = "tokio-console", default)]
     pub tokio_console: bool,
-    pub sentry: Option<String>,
     pub workers: u32,
 }
 
@@ -131,6 +128,14 @@ pub struct Git {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Http {
+    pub address: SocketAddr,
+    #[serde(rename = "management-token")]
+    pub management_token: String,
+    pub webhooks: Webhooks,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 pub enum Notifier {
     Discord {
@@ -198,9 +203,7 @@ mod tests {
             .expect("failed to parse configuration");
         let config = instance();
 
-        assert_eq!("127.0.0.1:8000", &config.agent.address.to_string());
         assert_eq!("info", &config.agent.log);
-        assert_eq!("please-change-me", &config.agent.management_token);
         assert_eq!(false, config.agent.tokio_console);
         assert_eq!(2, config.agent.workers);
 
@@ -237,6 +240,11 @@ mod tests {
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
         assert_eq!("WaffleHacks/waffles", &config.git.repository);
 
+        assert_eq!("127.0.0.1:8000", &config.http.address.to_string());
+        assert_eq!("please-change-me", &config.http.management_token);
+        assert_eq!("please-change:this-token", &config.http.webhooks.docker);
+        assert_eq!("please-change-this-secret", &config.http.webhooks.github);
+
         assert_eq!(2, config.notifiers.len());
         assert!(matches!(
             &config.notifiers[0],
@@ -266,8 +274,5 @@ mod tests {
             Duration::new(60 * 60 * 24, 0),
             config.secrets.token_interval().unwrap()
         );
-
-        assert_eq!("please-change:this-token", &config.webhooks.docker);
-        assert_eq!("please-change-this-secret", &config.webhooks.github);
     }
 }

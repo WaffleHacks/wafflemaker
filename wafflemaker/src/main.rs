@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
         .await
         .context("Failed to load configuration")?;
     let configuration = config::instance();
-    let address = cli.address.unwrap_or(configuration.agent.address);
+    let address = cli.address.unwrap_or(configuration.http.address);
 
     // Ensure the clone directory exists
     if !configuration.git.clone_to.exists() {

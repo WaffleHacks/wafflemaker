@@ -9,7 +9,7 @@ mod webhooks;
 pub fn routes() -> Router {
     let cfg = config::instance();
     Router::new()
-        .merge(management::routes(cfg.agent.management_token.clone()))
+        .merge(management::routes(cfg.http.management_token.clone()))
         .merge(webhooks::routes())
         .layer(logging::layer())
 }
