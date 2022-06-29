@@ -1,3 +1,4 @@
+use super::Result;
 use crate::{
     deployer, git,
     processor::jobs::{self, PlanUpdate},
@@ -27,20 +28,13 @@ struct Response {
 
 /// Get the most recently deployed version, number of running deployments,
 /// and number of known services
-async fn info() -> Result<Json<Response>, StatusCode> {
-    let running = deployer::instance()
-        .list()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .len();
+async fn info() -> Result<Json<Response>> {
+    let running = deployer::instance().list().await?.len();
     let services = {
         let reg = REGISTRY.read().await;
         reg.len()
     };
-    let commit = git::instance()
-        .head()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let commit = git::instance().head().await?;
 
     Ok(Json(Response {
         commit,
@@ -50,11 +44,8 @@ async fn info() -> Result<Json<Response>, StatusCode> {
 }
 
 /// Re-run a deployment given the commit hash of the before state
-async fn rerun(Path(before): Path<String>) -> Result<StatusCode, StatusCode> {
-    let current = git::instance()
-        .head()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+async fn rerun(Path(before): Path<String>) -> Result<StatusCode> {
+    let current = git::instance().head().await?;
 
     jobs::dispatch(PlanUpdate::new(before, current));
 

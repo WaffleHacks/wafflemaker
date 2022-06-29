@@ -1,10 +1,10 @@
+use super::{Error, Result};
 use axum::{
     http::StatusCode,
     routing::{get, post},
     Router,
 };
 
-mod error;
 mod handlers;
 mod models;
 mod validators;

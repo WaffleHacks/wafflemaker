@@ -1,3 +1,4 @@
+use super::Result;
 use crate::{
     deployer,
     vault::{Lease, LEASES},
@@ -51,7 +52,7 @@ struct Response {
 }
 
 /// Get all the currently registered leases
-async fn list() -> Result<Json<Response>, StatusCode> {
+async fn list() -> Result<Json<Response>> {
     let leases = LEASES.read().await;
     let leases = leases
         .iter()
@@ -63,26 +64,16 @@ async fn list() -> Result<Json<Response>, StatusCode> {
         })
         .collect();
 
-    let services = deployer::instance()
-        .list()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let services = deployer::instance().list().await?;
 
     Ok(Json(Response { leases, services }))
 }
 
 /// Add a lease to track for a service
-async fn add(
-    Path(service): Path<String>,
-    Json(body): Json<HttpLease>,
-) -> Result<StatusCode, StatusCode> {
+async fn add(Path(service): Path<String>, Json(body): Json<HttpLease>) -> Result<StatusCode> {
     let mut leases = LEASES.write().await;
 
-    if let Some(id) = deployer::instance()
-        .service_id(&service)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-    {
+    if let Some(id) = deployer::instance().service_id(&service).await? {
         leases.entry(id).or_default().push(body.into_lease());
     }
 
@@ -95,17 +86,10 @@ struct Delete {
 }
 
 /// Remove a lease from tracking for a service
-async fn delete(
-    Path(service): Path<String>,
-    params: Query<Delete>,
-) -> Result<StatusCode, StatusCode> {
+async fn delete(Path(service): Path<String>, params: Query<Delete>) -> Result<StatusCode> {
     let mut leases = LEASES.write().await;
 
-    if let Some(id) = deployer::instance()
-        .service_id(&service)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-    {
+    if let Some(id) = deployer::instance().service_id(&service).await? {
         let mut empty = false;
 
         // Remove any entries matching the id

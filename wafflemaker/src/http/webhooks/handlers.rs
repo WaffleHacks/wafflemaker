@@ -1,7 +1,6 @@
 use super::{
-    error::{Error, Result},
     models::{Docker, Github, Repository},
-    validators,
+    validators, Error, Result,
 };
 use crate::{
     git,

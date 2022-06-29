@@ -1,4 +1,4 @@
-use super::error::{Error, Result};
+use super::{Error, Result};
 use axum::headers::{authorization::Basic, Authorization, HeaderValue};
 use ring::hmac;
 

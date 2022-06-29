@@ -1,6 +1,7 @@
+use super::{Error, Result};
 use axum::{
     headers::{authorization::Bearer, Authorization, Header},
-    http::{Request, StatusCode},
+    http::Request,
     middleware::{self, Next},
     response::Response,
     Extension, Router,
@@ -24,19 +25,19 @@ pub fn routes(token: String) -> Router {
 }
 
 /// Check the authentication header
-async fn authentication<B>(req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+async fn authentication<B>(req: Request<B>, next: Next<B>) -> Result<Response> {
     let AuthenticationToken(expected_token) = req.extensions().get().unwrap();
 
     let header = req
         .headers()
         .get(Authorization::<Bearer>::name())
-        .ok_or(StatusCode::UNAUTHORIZED)?;
+        .ok_or(Error::Unauthorized)?;
     let authorization = Authorization::<Bearer>::decode(&mut [header].into_iter())
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+        .map_err(|_| Error::Unauthorized)?;
 
     if authorization.token() == expected_token {
         Ok(next.run(req).await)
     } else {
-        Err(StatusCode::UNAUTHORIZED)
+        Err(Error::Unauthorized)
     }
 }

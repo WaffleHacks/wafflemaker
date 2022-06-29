@@ -1,3 +1,4 @@
+use crate::deployer::Error as DeployerError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -7,6 +8,7 @@ use git2::Error as Git2Error;
 use hex::FromHexError;
 use ring::error::Unspecified;
 use serde_json::{error::Error as SerdeError, json};
+use std::error::Error as StdError;
 use tracing::error;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
@@ -15,7 +17,9 @@ pub enum Error {
     Unauthorized,
     DisallowedRepository,
     Git(Git2Error),
+    Deployer(DeployerError),
     InvalidJson,
+    ServiceNotFound,
 }
 
 impl IntoResponse for Error {
@@ -23,6 +27,8 @@ impl IntoResponse for Error {
         let (status, message) = match self {
             Error::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized"),
             Error::DisallowedRepository => (StatusCode::FORBIDDEN, "disallowed repository"),
+            Error::InvalidJson => (StatusCode::BAD_REQUEST, "invalid JSON"),
+            Error::ServiceNotFound => (StatusCode::NOT_FOUND, "service not found"),
             Error::Git(e) => {
                 error!(
                     class = ?e.class(), code = ?e.code(),
@@ -31,7 +37,10 @@ impl IntoResponse for Error {
                 );
                 (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
             }
-            Error::InvalidJson => (StatusCode::BAD_REQUEST, "invalid JSON"),
+            Error::Deployer(e) => {
+                error!(error = %e, source = ?e.source(), "error while fetching deployment information");
+                (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            }
         };
 
         let body = Json(json!({ "message": message }));
@@ -42,6 +51,12 @@ impl IntoResponse for Error {
 impl From<SerdeError> for Error {
     fn from(_: SerdeError) -> Self {
         Error::InvalidJson
+    }
+}
+
+impl From<DeployerError> for Error {
+    fn from(e: DeployerError) -> Self {
+        Error::Deployer(e)
     }
 }
 

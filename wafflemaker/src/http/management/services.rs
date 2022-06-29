@@ -1,3 +1,4 @@
+use super::{Error, Result};
 use crate::{
     deployer,
     processor::jobs::{self, DeleteService, UpdateService},
@@ -19,7 +20,7 @@ pub fn routes() -> Router {
 
 /// Overcomes a limitation of axum where you cannot have a route with a bare / along with a route
 /// consuming the entire path after a / on the same router.
-async fn root_dispatch(Path(path): Path<String>) -> Result<HttpResponse, StatusCode> {
+async fn root_dispatch(Path(path): Path<String>) -> Result<HttpResponse> {
     // The will always be a leading /
     let service = path.strip_prefix("/").unwrap().to_owned();
 
@@ -47,16 +48,13 @@ struct Response {
 }
 
 /// Get the configuration for a service
-async fn read(service: String) -> Result<Json<Response>, StatusCode> {
+async fn read(service: String) -> Result<Json<Response>> {
     let service = service.as_str();
 
     let reg = REGISTRY.read().await;
-    let cfg = reg.get(service).ok_or_else(|| StatusCode::NOT_FOUND)?;
+    let cfg = reg.get(service).ok_or_else(|| Error::ServiceNotFound)?;
 
-    let deployment_id = deployer::instance()
-        .service_id(service)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let deployment_id = deployer::instance().service_id(service).await?;
 
     Ok(Json(Response {
         dependencies: cfg.dependencies.all(),
@@ -68,11 +66,11 @@ async fn read(service: String) -> Result<Json<Response>, StatusCode> {
 }
 
 /// Re-deploy a service
-async fn redeploy(Path(service): Path<String>) -> Result<StatusCode, StatusCode> {
+async fn redeploy(Path(service): Path<String>) -> Result<StatusCode> {
     let service = service.strip_prefix("/").unwrap();
 
     let reg = REGISTRY.read().await;
-    let config = reg.get(service).ok_or_else(|| StatusCode::NOT_FOUND)?;
+    let config = reg.get(service).ok_or_else(|| Error::ServiceNotFound)?;
 
     jobs::dispatch(UpdateService::new(config.clone(), service.into()));
 
