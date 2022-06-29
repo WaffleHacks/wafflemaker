@@ -4,6 +4,7 @@ use axum::{
     Router,
 };
 
+mod error;
 mod handlers;
 mod models;
 mod validators;

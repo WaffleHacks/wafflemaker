@@ -1,4 +1,5 @@
 use super::{
+    error::{Error, Result},
     models::{Docker, Github, Repository},
     validators,
 };
@@ -23,7 +24,7 @@ pub async fn docker(
     Json(body): Json<Docker>,
     TypedHeader(authorization): TypedHeader<Authorization<Basic>>,
     Extension(config): Extension<Arc<Config>>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode> {
     validators::docker(authorization, &config.http.webhooks.docker)?;
 
     info!(image = %body.repository.repo_name, tag = %body.push_data.tag, "got new image update hook");
@@ -67,14 +68,14 @@ pub async fn github(
     raw_body: Bytes,
     headers: HeaderMap,
     Extension(config): Extension<Arc<Config>>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode> {
     validators::github(
         &raw_body,
         headers.get("X-Hub-Signature-256"),
         config.http.webhooks.github.as_bytes(),
     )?;
 
-    let body: Github = serde_json::from_slice(&raw_body).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let body: Github = serde_json::from_slice(&raw_body)?;
     info!("got new {} hook", body.name());
 
     sentry::configure_scope(|scope| {
@@ -105,7 +106,7 @@ async fn github_push_event(
     reference: String,
     repository: Repository,
     config: Arc<Config>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode> {
     sentry::configure_scope(|scope| {
         scope.set_tag("hook.repository", &repository.name);
         scope.set_tag("hook.after", &after);
@@ -115,22 +116,13 @@ async fn github_push_event(
 
     // Check if the repository is allowed to be pulled
     if repository.name != config.git.repository || !reference.ends_with(&config.git.branch) {
-        return Err(StatusCode::FORBIDDEN);
+        return Err(Error::DisallowedRepository);
     }
 
     // Pull the repository
-    if let Err(e) = git::instance()
+    git::instance()
         .pull(repository.clone_url, reference, after.clone())
-        .await
-    {
-        error!(
-            "error while interacting with local repo: ({:?}, {:?}) {}",
-            e.class(),
-            e.code(),
-            e.message()
-        );
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
+        .await?;
 
     // Start the update
     jobs::dispatch(PlanUpdate::new(before, after));

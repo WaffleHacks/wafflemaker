@@ -1,38 +1,32 @@
-use axum::{
-    headers::{authorization::Basic, Authorization, HeaderValue},
-    http::StatusCode,
-};
+use super::error::{Error, Result};
+use axum::headers::{authorization::Basic, Authorization, HeaderValue};
 use ring::hmac;
 
 /// Ensure that the authorization header is correct
-pub fn docker(header: Authorization<Basic>, token: &str) -> Result<(), StatusCode> {
+pub fn docker(header: Authorization<Basic>, token: &str) -> Result<()> {
     let joined = [header.username(), header.password()].join(":");
 
     // Check the tokens match
     if joined == token {
         Ok(())
     } else {
-        Err(StatusCode::UNAUTHORIZED)
+        Err(Error::Unauthorized)
     }
 }
 
 /// Ensure that the provided signature from GitHub is valid
-pub fn github(
-    raw_body: &[u8],
-    header: Option<&HeaderValue>,
-    secret: &[u8],
-) -> Result<(), StatusCode> {
+pub fn github(raw_body: &[u8], header: Option<&HeaderValue>, secret: &[u8]) -> Result<()> {
     // Get the header value
     let raw_signature = header
         .map(|h| h.to_str().ok())
         .flatten()
-        .ok_or_else(|| StatusCode::UNAUTHORIZED)?;
+        .ok_or_else(|| Error::Unauthorized)?;
 
     // Remove the `sha256=` prefix from the hash
     let signature_hex = raw_signature
         .strip_prefix("sha256=")
-        .ok_or_else(|| StatusCode::UNAUTHORIZED)?;
-    let signature = hex::decode(signature_hex).map_err(|_| StatusCode::UNAUTHORIZED)?;
+        .ok_or_else(|| Error::Unauthorized)?;
+    let signature = hex::decode(signature_hex)?;
 
     let key = hmac::Key::new(hmac::HMAC_SHA256, secret);
 
@@ -45,7 +39,7 @@ pub fn github(
     );
 
     // Verify the signature
-    hmac::verify(&key, raw_body, &signature).map_err(|_| StatusCode::UNAUTHORIZED)
+    Ok(hmac::verify(&key, raw_body, &signature)?)
 }
 
 #[cfg(test)]
