@@ -128,7 +128,7 @@ async fn github_push_event(
     }
 
     // Start the update
-    jobs::dispatch(PlanUpdate::new(&cfg.git.clone_to, before, after));
+    jobs::dispatch(PlanUpdate::new(before, after));
 
     Ok(StatusCode::NO_CONTENT)
 }

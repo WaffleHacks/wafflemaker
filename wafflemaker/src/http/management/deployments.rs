@@ -1,5 +1,5 @@
 use crate::{
-    config, deployer, git,
+    deployer, git,
     processor::jobs::{self, PlanUpdate},
     service::registry::REGISTRY,
 };
@@ -56,8 +56,7 @@ async fn rerun(Path(before): Path<String>) -> Result<StatusCode, StatusCode> {
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let path = &config::instance().git.clone_to;
-    jobs::dispatch(PlanUpdate::new(path, before, current));
+    jobs::dispatch(PlanUpdate::new(before, current));
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -1,26 +1,24 @@
 use super::{DeleteService, Job, UpdateService};
 use crate::{
-    fail_notify,
+    config, fail_notify,
     git::{self, Action},
     notifier::{self, Event, State},
     service::Service,
 };
 use async_trait::async_trait;
-use std::{ffi::OsStr, path::PathBuf};
+use std::ffi::OsStr;
 use tracing::{error, info, instrument, warn};
 
 #[derive(Debug)]
 pub struct PlanUpdate {
-    base_path: PathBuf,
     before: String,
     after: String,
 }
 
 impl PlanUpdate {
     /// Create a new plan update job
-    pub fn new<S: Into<String>, P: Into<PathBuf>>(base_path: P, before: S, after: S) -> Self {
+    pub fn new<S: Into<String>>(before: S, after: S) -> Self {
         Self {
-            base_path: base_path.into(),
             before: before.into(),
             after: after.into(),
         }
@@ -49,6 +47,8 @@ impl Job for PlanUpdate {
                 fail_notify!(deployment, &self.after; $result; "an error occurred while planning deployment")
             };
         }
+
+        let cfg = config::instance();
 
         notifier::notify(Event::deployment(&self.after, State::InProgress)).await;
 
@@ -87,7 +87,7 @@ impl Job for PlanUpdate {
             match diff.action {
                 Action::Modified => {
                     // Parse the configuration
-                    let config = match Service::parse(self.base_path.join(&diff.path)).await {
+                    let config = match Service::parse(cfg.git.clone_to.join(&diff.path)).await {
                         Ok(c) => c,
                         Err(e) => {
                             let displayable = diff.path.display();
