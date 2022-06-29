@@ -2,7 +2,6 @@ use bollard::errors::Error as BollardError;
 use sled::Error as SledError;
 use std::{io::Error as IoError, string::FromUtf8Error};
 use thiserror::Error as ThisError;
-use warp::reject::Reject;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
 
@@ -30,8 +29,6 @@ pub enum Error {
     #[error("an unknown error occurred")]
     Unknown(#[source] ErrorSource),
 }
-
-impl Reject for Error {}
 
 /// A wrapper around the deployer specific error types to allow source errors.
 #[derive(Debug, ThisError)]

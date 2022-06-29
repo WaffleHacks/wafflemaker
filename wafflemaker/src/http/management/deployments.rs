@@ -6,11 +6,11 @@ use crate::{
 };
 use axum::{
     extract::Path,
+    http::StatusCode,
     routing::{get, post},
     Json, Router,
 };
 use serde::Serialize;
-use warp::http::StatusCode;
 
 /// Build the routes for deployments
 pub fn routes() -> Router {
