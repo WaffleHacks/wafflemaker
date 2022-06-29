@@ -1,14 +1,10 @@
-use crate::{config, http};
 use axum::{
     headers::{authorization::Bearer, Authorization, Header},
     http::{Request, StatusCode},
     middleware::{self, Next},
     response::Response,
-    Extension, Router, Server,
+    Extension, Router,
 };
-use tokio::sync::broadcast::Sender;
-use tokio::task;
-use tracing::{info, instrument};
 
 mod deployments;
 mod leases;
@@ -17,34 +13,14 @@ mod services;
 #[derive(Clone)]
 struct AuthenticationToken(String);
 
-/// Start the management interface
-#[instrument(skip(stop_tx))]
-pub fn start(stop_tx: Sender<()>) {
-    let config = &config::instance().management;
-
-    // Don't start if disabled
-    if !config.enabled {
-        return;
-    }
-
-    // Build the routes
-    let router = Router::new()
+/// Build the routes for the management API
+pub fn routes(token: String) -> Router {
+    Router::new()
         .nest("/deployments", deployments::routes())
         .nest("/leases", leases::routes())
         .nest("/services", services::routes())
         .route_layer(middleware::from_fn(authentication))
-        .layer(Extension(AuthenticationToken(config.token.clone())))
-        .layer(http::logging());
-
-    let server = Server::bind(&config.address)
-        .serve(router.into_make_service())
-        .with_graceful_shutdown(async move {
-            stop_tx.subscribe().recv().await.ok();
-        });
-
-    // Start the server
-    task::spawn(server);
-    info!("management interface listening on {}", config.address);
+        .layer(Extension(AuthenticationToken(token)))
 }
 
 /// Check the authentication header

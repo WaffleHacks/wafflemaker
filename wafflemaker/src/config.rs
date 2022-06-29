@@ -32,7 +32,6 @@ pub struct Config {
     pub deployment: Deployment,
     pub dns: Dns,
     pub git: Git,
-    pub management: Management,
     pub notifiers: Vec<Notifier>,
     pub secrets: Secrets,
     pub webhooks: Webhooks,
@@ -42,6 +41,8 @@ pub struct Config {
 pub struct Agent {
     pub address: SocketAddr,
     pub log: String,
+    #[serde(rename = "management-token")]
+    pub management_token: String,
     #[serde(rename = "tokio-console", default)]
     pub tokio_console: bool,
     pub sentry: Option<String>,
@@ -130,13 +131,6 @@ pub struct Git {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Management {
-    pub enabled: bool,
-    pub address: SocketAddr,
-    pub token: String,
-}
-
-#[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "type")]
 pub enum Notifier {
     Discord {
@@ -206,6 +200,7 @@ mod tests {
 
         assert_eq!("127.0.0.1:8000", &config.agent.address.to_string());
         assert_eq!("info", &config.agent.log);
+        assert_eq!("please-change-me", &config.agent.management_token);
         assert_eq!(false, config.agent.tokio_console);
         assert_eq!(2, config.agent.workers);
 
@@ -241,10 +236,6 @@ mod tests {
         assert_eq!("master", &config.git.branch);
         assert_eq!("./configuration", config.git.clone_to.to_str().unwrap());
         assert_eq!("WaffleHacks/waffles", &config.git.repository);
-
-        assert!(config.management.enabled);
-        assert_eq!("127.0.0.1:8001", &config.management.address.to_string());
-        assert_eq!("please-change-me", config.management.token);
 
         assert_eq!(2, config.notifiers.len());
         assert!(matches!(

@@ -11,7 +11,6 @@ use tokio::{
     fs,
     signal::unix::{signal, SignalKind},
     sync::broadcast,
-    task,
 };
 use tracing::info;
 use tracing_subscriber::{
@@ -26,12 +25,10 @@ mod deployer;
 mod dns;
 mod git;
 mod http;
-mod management;
 mod notifier;
 mod processor;
 mod service;
 mod vault;
-mod webhooks;
 
 use config::Config;
 use service::registry;
@@ -76,7 +73,7 @@ async fn main() -> Result<()> {
 
 /// Connect to the services and start the server
 async fn run_server(address: SocketAddr, configuration: &Config) -> Result<()> {
-    let (stop_tx, mut stop_rx) = broadcast::channel(1);
+    let (stop_tx, _) = broadcast::channel(1);
 
     // Initialize the service registry
     registry::init().await?;
@@ -104,24 +101,13 @@ async fn run_server(address: SocketAddr, configuration: &Config) -> Result<()> {
     // Start the job processor
     processor::spawn(stop_tx.clone());
 
-    // Start the management interface
-    management::start(stop_tx.clone());
-
-    // Bind the server
-    let server = Server::bind(&address)
-        .serve(webhooks::routes().into_make_service())
-        .with_graceful_shutdown(async move {
-            stop_rx.recv().await.ok();
-        });
-
     // Start the server
-    task::spawn(server);
-    info!("listening on {}", address);
+    info!(%address, "listening and ready to handle requests");
+    Server::bind(&address)
+        .serve(http::routes().into_make_service())
+        .with_graceful_shutdown(wait_for_exit())
+        .await?;
 
-    // Wait for shutdown
-    wait_for_exit()
-        .await
-        .context("failed to listen for event")?;
     info!("signal received, shutting down...");
 
     // Shutdown the services
@@ -136,13 +122,13 @@ async fn run_server(address: SocketAddr, configuration: &Config) -> Result<()> {
 }
 
 /// Wait for a SIGINT or SIGTERM and then exit
-async fn wait_for_exit() -> Result<()> {
-    let mut int = signal(SignalKind::interrupt())?;
-    let mut term = signal(SignalKind::terminate())?;
+async fn wait_for_exit() {
+    let mut int = signal(SignalKind::interrupt()).unwrap();
+    let mut term = signal(SignalKind::terminate()).unwrap();
 
     tokio::select! {
-        _ = int.recv() => Ok(()),
-        _ = term.recv() => Ok(()),
+        _ = int.recv() => {},
+        _ = term.recv() => {},
     }
 }
 

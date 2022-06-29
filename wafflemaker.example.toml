@@ -8,6 +8,9 @@
   # Default: "info"
   log = "info"
 
+  # The token for authenticating with the management API
+  management-token = "please-change-me"
+
   # Enable Tokio console for detailed debugging
   # NOTE: this generates TONS of logs and overrides the default log level
   tokio-console = false
@@ -106,18 +109,6 @@
 
   # The branch that gets deployed
   branch = "master"
-
-# Configuration for the management interface
-# NOTE: this allows access to the entire system, it should not be publicly available
-[management]
-  # Whether to enable the interface
-  enabled = true
-
-  # The port and address the management interface should listen on
-  address = "127.0.0.1:8001"
-
-  # The token required to be present on each request to authenticate with the API
-  token = "please-change-me"
 
 # Configuration for notifying of deployment status
 # There are two types of notifications: service and deployment.

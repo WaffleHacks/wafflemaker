@@ -1,4 +1,3 @@
-use crate::http;
 use axum::{
     http::StatusCode,
     routing::{get, post},
@@ -9,13 +8,12 @@ mod handlers;
 mod models;
 mod validators;
 
-/// Build the routes for the API
+/// Build the routes for the webhook receivers
 pub fn routes() -> Router {
     Router::new()
         .route("/docker", post(handlers::docker))
         .route("/github", post(handlers::github))
         .route("/health", get(health))
-        .layer(http::logging())
 }
 
 async fn health() -> StatusCode {
