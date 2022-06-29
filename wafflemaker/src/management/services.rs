@@ -1,41 +1,40 @@
 use crate::{
     config, deployer,
-    http::named_trace,
     processor::jobs::{self, DeleteService, UpdateService},
     registry::REGISTRY,
 };
+use axum::{
+    extract::Path,
+    http::StatusCode,
+    response::{IntoResponse, Response as HttpResponse},
+    routing::get,
+    Json, Router,
+};
 use serde::Serialize;
-use warp::{http::StatusCode, path::Tail, Filter, Rejection, Reply};
 
 /// Build the routes for services
-pub fn routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let list = warp::get()
-        .and(warp::path::end())
-        .and_then(list)
-        .with(named_trace("list"));
+pub fn routes() -> Router {
+    Router::new().route("/*service", get(root_dispatch).put(redeploy).delete(delete))
+}
 
-    let get = warp::get()
-        .and(warp::path::tail())
-        .and_then(get)
-        .with(named_trace("get"));
-    let redeploy = warp::put()
-        .and(warp::path::tail())
-        .and_then(redeploy)
-        .with(named_trace("redeploy"));
-    let delete = warp::delete()
-        .and(warp::path::tail())
-        .and_then(delete)
-        .with(named_trace("delete"));
+/// Overcomes a limitation of axum where you cannot have a route with a bare / along with a route
+/// consuming the entire path after a / on the same router.
+async fn root_dispatch(Path(path): Path<String>) -> Result<HttpResponse, StatusCode> {
+    // The will always be a leading /
+    let service = path.strip_prefix("/").unwrap().to_owned();
 
-    warp::path("services").and(list.or(get).or(redeploy).or(delete))
+    if service.is_empty() {
+        Ok(list().await.into_response())
+    } else {
+        read(service).await.map(IntoResponse::into_response)
+    }
 }
 
 /// Get a list of all the currently deployed services
-async fn list() -> Result<impl Reply, Rejection> {
+async fn list() -> Json<Vec<String>> {
     let reg = REGISTRY.read().await;
-    let services = reg.keys().map(String::as_str).collect::<Vec<&str>>();
 
-    Ok(warp::reply::json(&services))
+    Json(reg.keys().map(String::to_owned).collect())
 }
 
 #[derive(Debug, Serialize)]
@@ -48,13 +47,16 @@ struct Response {
 }
 
 /// Get the configuration for a service
-async fn get(service: Tail) -> Result<impl Reply, Rejection> {
+async fn read(service: String) -> Result<Json<Response>, StatusCode> {
     let service = service.as_str();
 
     let reg = REGISTRY.read().await;
-    let cfg = reg.get(service).ok_or_else(warp::reject::not_found)?;
+    let cfg = reg.get(service).ok_or_else(|| StatusCode::NOT_FOUND)?;
 
-    let deployment_id = deployer::instance().service_id(service).await?;
+    let deployment_id = deployer::instance()
+        .service_id(service)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Display the domain if it was added
     let domain = if cfg.web.enabled {
@@ -70,7 +72,7 @@ async fn get(service: Tail) -> Result<impl Reply, Rejection> {
         None
     };
 
-    Ok(warp::reply::json(&Response {
+    Ok(Json(Response {
         dependencies: cfg.dependencies.all(),
         image: format!("{}:{}", cfg.docker.image, cfg.docker.tag),
         automatic_updates: cfg.docker.update.automatic,
@@ -80,11 +82,11 @@ async fn get(service: Tail) -> Result<impl Reply, Rejection> {
 }
 
 /// Re-deploy a service
-async fn redeploy(service: Tail) -> Result<impl Reply, Rejection> {
-    let service = service.as_str();
+async fn redeploy(Path(service): Path<String>) -> Result<StatusCode, StatusCode> {
+    let service = service.strip_prefix("/").unwrap();
 
     let reg = REGISTRY.read().await;
-    let config = reg.get(service).ok_or_else(warp::reject::not_found)?;
+    let config = reg.get(service).ok_or_else(|| StatusCode::NOT_FOUND)?;
 
     jobs::dispatch(UpdateService::new(config.clone(), service.into()));
 
@@ -92,7 +94,9 @@ async fn redeploy(service: Tail) -> Result<impl Reply, Rejection> {
 }
 
 /// Delete a service
-async fn delete(service: Tail) -> Result<impl Reply, Rejection> {
-    jobs::dispatch(DeleteService::new(service.as_str().into()));
-    Ok(StatusCode::NO_CONTENT)
+async fn delete(Path(service): Path<String>) -> StatusCode {
+    let service = service.strip_prefix("/").unwrap();
+    jobs::dispatch(DeleteService::new(service.into()));
+
+    StatusCode::NO_CONTENT
 }

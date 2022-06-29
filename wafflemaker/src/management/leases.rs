@@ -1,34 +1,20 @@
 use crate::{
     deployer,
-    http::named_trace,
     vault::{Lease, LEASES},
+};
+use axum::{
+    extract::{Path, Query},
+    http::StatusCode,
+    routing::{get, put},
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use warp::{http::StatusCode, Filter, Rejection, Reply};
 
-pub fn routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let list = warp::get()
-        .and(warp::path::end())
-        .and_then(list)
-        .with(named_trace("list"));
-
-    let update = warp::put()
-        .and(warp::path::param())
-        .and(warp::path::end())
-        .and(warp::body::content_length_limit(1024 * 8))
-        .and(warp::body::json())
-        .and_then(add)
-        .with(named_trace("put"));
-
-    let delete = warp::delete()
-        .and(warp::path::param())
-        .and(warp::path::end())
-        .and(warp::query())
-        .and_then(delete)
-        .with(named_trace("delete"));
-
-    warp::path("leases").and(list.or(update).or(delete))
+pub fn routes() -> Router {
+    Router::new()
+        .route("/", get(list))
+        .route("/:id", put(add).delete(delete))
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -59,36 +45,44 @@ impl HttpLease {
 }
 
 #[derive(Debug, Serialize)]
-struct Response<'l> {
-    leases: HashMap<&'l str, Vec<HttpLease>>,
+struct Response {
+    leases: HashMap<String, Vec<HttpLease>>,
     services: HashMap<String, String>,
 }
 
 /// Get all the currently registered leases
-async fn list() -> Result<impl Reply, Rejection> {
+async fn list() -> Result<Json<Response>, StatusCode> {
     let leases = LEASES.read().await;
+    let leases = leases
+        .iter()
+        .map(|(id, lease_set)| {
+            (
+                id.to_owned(),
+                lease_set.iter().map(HttpLease::from).collect(),
+            )
+        })
+        .collect();
 
-    let mut response = HashMap::new();
-    for (id, lease_set) in leases.iter() {
-        response.insert(
-            id.as_str(),
-            lease_set.iter().map(HttpLease::from).collect::<Vec<_>>(),
-        );
-    }
+    let services = deployer::instance()
+        .list()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let services = deployer::instance().list().await?;
-
-    Ok(warp::reply::json(&Response {
-        leases: response,
-        services,
-    }))
+    Ok(Json(Response { leases, services }))
 }
 
 /// Add a lease to track for a service
-async fn add(service: String, body: HttpLease) -> Result<impl Reply, Rejection> {
+async fn add(
+    Path(service): Path<String>,
+    Json(body): Json<HttpLease>,
+) -> Result<StatusCode, StatusCode> {
     let mut leases = LEASES.write().await;
 
-    if let Some(id) = deployer::instance().service_id(&service).await? {
+    if let Some(id) = deployer::instance()
+        .service_id(&service)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         leases.entry(id).or_default().push(body.into_lease());
     }
 
@@ -101,10 +95,17 @@ struct Delete {
 }
 
 /// Remove a lease from tracking for a service
-async fn delete(service: String, params: Delete) -> Result<impl Reply, Rejection> {
+async fn delete(
+    Path(service): Path<String>,
+    params: Query<Delete>,
+) -> Result<StatusCode, StatusCode> {
     let mut leases = LEASES.write().await;
 
-    if let Some(id) = deployer::instance().service_id(&service).await? {
+    if let Some(id) = deployer::instance()
+        .service_id(&service)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         let mut empty = false;
 
         // Remove any entries matching the id

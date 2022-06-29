@@ -105,7 +105,7 @@ async fn run_server(address: SocketAddr, configuration: &Config) -> Result<()> {
     processor::spawn(stop_tx.clone());
 
     // Start the management interface
-    management::start(stop_tx.clone())?;
+    management::start(stop_tx.clone());
 
     // Bind the server
     let server = Server::bind(&address)

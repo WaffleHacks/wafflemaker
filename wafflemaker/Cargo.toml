@@ -56,7 +56,7 @@ tokio = { version = "1.19.2", features = ["fs", "macros", "process", "rt", "rt-m
 tokio-stream = { version = "0.1", features = ["fs"] }
 
 # Webhooks
-axum = { version = "0.5.9", default-features = false, features = ["headers", "http1", "http2", "json", "matched-path", "tower-log"] }
+axum = { version = "0.5.9", default-features = false, features = ["headers", "http1", "http2", "json", "query", "tower-log"] }
 base64 = "0.13"
 bytes = "1.0"
 hex = "0.4"
