@@ -103,8 +103,6 @@ impl Default for AutoUpdate {
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Web {
-    #[serde(default = "default_true")]
-    pub enabled: bool,
     #[serde(default)]
     #[serde_as(as = "NoneAsEmptyString")]
     pub domain: Option<String>,
@@ -116,7 +114,6 @@ pub struct Web {
 impl Default for Web {
     fn default() -> Web {
         Web {
-            enabled: true,
             domain: None,
             path: None,
         }
@@ -152,8 +149,7 @@ mod tests {
         assert_eq!(service.docker.update.additional_tags.len(), 1);
         assert_eq!(service.environment.len(), 4);
         assert_eq!(service.secrets.len(), 6);
-        assert_eq!(service.web.enabled, true);
-        assert_eq!(service.web.domain, Some("testing.wafflehacks.tech".into()));
+        assert_eq!(service.web.domain, Some("testing.wafflehacks.org".into()));
         assert_eq!(service.web.path, Some("/testing".into()));
     }
 
@@ -177,7 +173,6 @@ mod tests {
         assert_eq!(service.docker.update.additional_tags.len(), 0);
         assert_eq!(service.environment.len(), 0);
         assert_eq!(service.secrets.len(), 0);
-        assert_eq!(service.web.enabled, true);
         assert_eq!(service.web.domain, None);
         assert_eq!(service.web.path, None);
     }

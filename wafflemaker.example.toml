@@ -42,9 +42,6 @@
 
 # The deployment engine configuration
 [deployment]
-  # The base domain where services are deployed on
-  domain = "wafflehacks.tech"
-
   # How to connect to docker
   # Options:
   #   - local     connect via unix socket or local pipe

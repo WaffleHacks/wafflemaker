@@ -53,7 +53,6 @@ pub enum Dependency {
 
 #[derive(Debug, Deserialize)]
 pub struct Deployment {
-    pub domain: String,
     #[serde(flatten)]
     pub connection: Connection,
     pub endpoint: String,
@@ -65,7 +64,6 @@ pub struct Deployment {
 impl Default for Deployment {
     fn default() -> Deployment {
         Deployment {
-            domain: "wafflehacks.tech".into(),
             connection: Default::default(),
             endpoint: "unix:///var/run/docker.sock".into(),
             timeout: 10,
@@ -215,7 +213,6 @@ mod tests {
             ));
         }
 
-        assert_eq!("wafflehacks.tech", &config.deployment.domain);
         assert_eq!(Connection::Local, config.deployment.connection);
         assert_eq!("unix:///var/run/docker.sock", config.deployment.endpoint);
         assert_eq!(120, config.deployment.timeout);

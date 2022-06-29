@@ -50,12 +50,7 @@ impl Job for UpdateService {
             .name(&*self.name.sanitized)
             .image(&service.docker.image, &service.docker.tag);
 
-        if service.web.enabled {
-            let domain = match service.web.domain.clone() {
-                Some(d) => d,
-                None => format!("{}.{}", &self.name.domain, &config.deployment.domain),
-            };
-
+        if let Some(domain) = &service.web.domain {
             options = options.routing(domain, service.web.path.as_deref());
         }
 

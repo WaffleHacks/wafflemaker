@@ -16,16 +16,13 @@
     additional_tags = ["sha-*"]
 
 [web]
-  # Whether to enable web access (default: true)
-  enabled = true
+  # The domain where the application can be accessed
+  # If a domain is not provided, web access is disabled
+  domain = "testing.wafflehacks.org"
 
   # An optional path prefix to run the application under
   # When not provided, the service will run on the base domain
   path = "/testing"
-
-  # The domain where the application can be accessed
-  # Defaults to the filename combined with the `deployment.domain` key in the configuration
-  domain = "testing.wafflehacks.tech"
 
 # What external services this depends on
 # Currently supports: PostgreSQL and Redis
