@@ -1,4 +1,4 @@
-use crate::config;
+use crate::{config, http};
 use axum::{
     headers::{authorization::Bearer, Authorization, Header},
     http::{Request, StatusCode},
@@ -33,7 +33,8 @@ pub fn start(stop_tx: Sender<()>) {
         .nest("/leases", leases::routes())
         .nest("/services", services::routes())
         .route_layer(middleware::from_fn(authentication))
-        .layer(Extension(AuthenticationToken(config.token.clone())));
+        .layer(Extension(AuthenticationToken(config.token.clone())))
+        .layer(http::logging());
 
     let server = Server::bind(&config.address)
         .serve(router.into_make_service())

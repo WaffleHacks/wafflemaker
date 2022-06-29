@@ -30,7 +30,7 @@ console-subscriber = { version = "0.1.6", features = ["parking_lot"] }
 sentry = { version = "0.27.0", default-features = false, features = ["anyhow", "backtrace", "contexts", "panic", "reqwest", "rustls", "tracing"] }
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.11", features = ["env-filter", "fmt", "std", "tracing-log"] }
-uuid = { version = "0.8", features = ["v4"] }
+uuid = { version = "1.1.2", features = ["v4"] }
 
 # Job processing
 async-trait = "0.1"
@@ -55,11 +55,12 @@ shrinkwraprs = "0.3"
 tokio = { version = "1.19.2", features = ["fs", "macros", "process", "rt", "rt-multi-thread", "signal", "time", "tracing"] }
 tokio-stream = { version = "0.1", features = ["fs"] }
 
-# Webhooks
+# Web
 axum = { version = "0.5.9", default-features = false, features = ["headers", "http1", "http2", "json", "query", "tower-log"] }
 base64 = "0.13"
 bytes = "1.0"
 hex = "0.4"
 ring = { version = "0.16", default-features = false, features = ["std"] }
 serde_json = "1.0"
+tower-http = { version = "0.3.4", default-features = false, features = ["request-id", "trace"] }
 warp = { version = "0.3", default-features = false }

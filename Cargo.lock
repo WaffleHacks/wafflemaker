@@ -2751,6 +2751,8 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
+ "uuid 1.1.2",
 ]
 
 [[package]]
@@ -3016,10 +3018,11 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "toml",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
  "url",
- "uuid 0.8.2",
+ "uuid 1.1.2",
  "warp",
 ]
 

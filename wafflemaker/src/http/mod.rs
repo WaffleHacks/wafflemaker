@@ -1,38 +1,31 @@
-use tracing::Span;
-use warp::trace::{trace, Info, Trace};
+use axum::http::Request;
+use tower_http::{
+    classify::{ServerErrorsAsFailures, SharedClassifier},
+    trace::{DefaultOnRequest, DefaultOnResponse, MakeSpan, TraceLayer},
+};
+use tracing::{span, Level, Span};
+use uuid::Uuid;
 
-mod errors;
+#[derive(Clone, Copy)]
+pub struct MakeSpanWithId;
 
-pub use errors::*;
-
-/// Wrap the request with some information allowing it
-/// to be traced through the logs. Built off of the
-/// `warp::trace::request` implementation
-pub fn named_trace(name: &'static str) -> Trace<impl Fn(Info) -> Span + Clone> {
-    use tracing::field::{display, Empty};
-
-    trace(move |info: Info| {
-        let span = tracing::info_span!(
+impl<B> MakeSpan<B> for MakeSpanWithId {
+    fn make_span(&mut self, request: &Request<B>) -> Span {
+        span!(
+            Level::INFO,
             "request",
-            %name,
-            remote.addr = Empty,
-            method = %info.method(),
-            path = %info.path(),
-            version = ?info.version(),
-            referrer = Empty,
-            id = %uuid::Uuid::new_v4(),
-        );
+            method = %request.method(),
+            uri = %request.uri(),
+            version = ?request.version(),
+            id = %Uuid::new_v4(),
+        )
+    }
+}
 
-        // Record optional fields
-        if let Some(remote_addr) = info.remote_addr() {
-            span.record("remote.addr", &display(remote_addr));
-        }
-        if let Some(referrer) = info.referer() {
-            span.record("referrer", &display(referrer));
-        }
-
-        tracing::debug!(parent: &span, "received request");
-
-        span
-    })
+/// Create a logging middleware layer
+pub fn logging() -> TraceLayer<SharedClassifier<ServerErrorsAsFailures>, MakeSpanWithId> {
+    TraceLayer::new_for_http()
+        .make_span_with(MakeSpanWithId)
+        .on_request(DefaultOnRequest::new().level(Level::INFO))
+        .on_response(DefaultOnResponse::new().level(Level::INFO))
 }
