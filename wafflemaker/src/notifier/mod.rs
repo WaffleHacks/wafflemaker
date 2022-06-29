@@ -1,4 +1,4 @@
-use crate::config;
+use crate::{config, Config};
 use once_cell::sync::OnceCell;
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT},
@@ -23,12 +23,10 @@ static GITHUB_API_PREVIEWS: &[&str; 2] = &[
 static NOTIFIERS: OnceCell<Arc<Vec<Notifier>>> = OnceCell::new();
 
 /// Initialize the notifiers service
-pub fn initialize() -> Result<()> {
-    let cfg = &config::instance();
-
+pub fn initialize(config: &Config) -> Result<()> {
     let mut notifiers = Vec::new();
-    for raw in &cfg.notifiers {
-        notifiers.push(Notifier::extract(raw, &cfg.git.repository)?);
+    for raw in &config.notifiers {
+        notifiers.push(Notifier::extract(raw, &config.git.repository)?);
     }
 
     match NOTIFIERS.set(Arc::new(notifiers)) {
@@ -64,6 +62,7 @@ enum Notifier {
     Discord {
         url: String,
         client: Client,
+        default_repo: String,
     },
     GitHub {
         owner: String,
@@ -79,7 +78,11 @@ impl Notifier {
     /// Dispatch an event to the service
     async fn dispatch(&self, event: &Event<'_, '_>) -> Result<()> {
         match self {
-            Self::Discord { url, client } => services::discord(client, url, event).await,
+            Self::Discord {
+                url,
+                client,
+                default_repo,
+            } => services::discord(client, url, default_repo, event).await,
             Self::GitHub {
                 repository,
                 owner,
@@ -120,6 +123,7 @@ impl Notifier {
                 let parsed = Url::parse(webhook)?;
 
                 Notifier::Discord {
+                    default_repo: default_repo.to_owned(),
                     url: parsed.to_string(),
                     client: Client::builder()
                         .user_agent(format!(

@@ -1,15 +1,16 @@
-use crate::config;
-use axum::Router;
+use crate::Config;
+use axum::{Extension, Router};
+use std::sync::Arc;
 
 mod logging;
 mod management;
 mod webhooks;
 
 /// Build all the routes for the service
-pub fn routes() -> Router {
-    let cfg = config::instance();
+pub fn routes(config: Arc<Config>) -> Router {
     Router::new()
-        .merge(management::routes(cfg.http.management_token.clone()))
+        .merge(management::routes(config.http.management_token.clone()))
         .merge(webhooks::routes())
+        .layer(Extension(config))
         .layer(logging::layer())
 }

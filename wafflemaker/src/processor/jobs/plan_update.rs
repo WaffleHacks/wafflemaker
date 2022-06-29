@@ -1,12 +1,13 @@
 use super::{DeleteService, Job, UpdateService};
 use crate::{
-    config, fail_notify,
+    fail_notify,
     git::{self, Action},
     notifier::{self, Event, State},
     service::Service,
+    Config,
 };
 use async_trait::async_trait;
-use std::ffi::OsStr;
+use std::{ffi::OsStr, sync::Arc};
 use tracing::{error, info, instrument, warn};
 
 #[derive(Debug)]
@@ -38,17 +39,15 @@ impl PlanUpdate {
 #[async_trait]
 impl Job for PlanUpdate {
     #[instrument(
-        skip(self),
+        skip_all,
         fields(before = %self.short_before(), after = %self.short_after(), name = %self.name())
     )]
-    async fn run(&self) {
+    async fn run(&self, config: Arc<Config>) {
         macro_rules! fail {
             ($result:expr) => {
                 fail_notify!(deployment, &self.after; $result; "an error occurred while planning deployment")
             };
         }
-
-        let cfg = config::instance();
 
         notifier::notify(Event::deployment(&self.after, State::InProgress)).await;
 
@@ -82,12 +81,12 @@ impl Job for PlanUpdate {
                 continue;
             }
 
-            let name = Service::name(diff.path.as_path());
+            let name = Service::name(&diff.path, &config.git.clone_to);
 
             match diff.action {
                 Action::Modified => {
                     // Parse the configuration
-                    let config = match Service::parse(cfg.git.clone_to.join(&diff.path)).await {
+                    let config = match Service::parse(config.git.clone_to.join(&diff.path)).await {
                         Ok(c) => c,
                         Err(e) => {
                             let displayable = diff.path.display();

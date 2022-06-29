@@ -1,5 +1,4 @@
 use super::Service;
-use crate::config;
 use anyhow::Result;
 use async_recursion::async_recursion;
 use once_cell::sync::Lazy;
@@ -13,10 +12,10 @@ pub static REGISTRY: Lazy<RwLock<HashMap<String, Service>>> =
 
 /// Load the initial services from the filesystem
 #[instrument]
-pub async fn init() -> Result<()> {
+pub async fn init(path: &Path) -> Result<()> {
     let mut reg = REGISTRY.write().await;
 
-    load_dir(&mut reg, &config::instance().git.clone_to).await?;
+    load_dir(&mut reg, path).await?;
 
     info!("loaded {} services", reg.len());
     Ok(())
@@ -38,7 +37,7 @@ async fn load_dir(reg: &mut HashMap<String, Service>, path: &Path) -> Result<()>
             continue;
         }
 
-        let name = Service::name(&entry.path());
+        let name = Service::name(&entry.path(), path);
         let service = Service::parse(&entry.path()).await?;
 
         debug!("loaded service {}", &name);

@@ -3,26 +3,28 @@ use super::{
     validators,
 };
 use crate::{
-    config, git,
+    git,
     processor::jobs::{self, PlanUpdate, UpdateService},
     service::registry,
+    Config,
 };
 use axum::{
     body::Bytes,
     extract::TypedHeader,
     headers::{authorization::Basic, Authorization, HeaderMap},
     http::StatusCode,
-    Json,
+    Extension, Json,
 };
+use std::sync::Arc;
 use tracing::{error, info};
 
 /// Handle webhooks from Docker image pushes
 pub async fn docker(
     Json(body): Json<Docker>,
     TypedHeader(authorization): TypedHeader<Authorization<Basic>>,
+    Extension(config): Extension<Arc<Config>>,
 ) -> Result<StatusCode, StatusCode> {
-    let cfg = config::instance();
-    validators::docker(authorization, &cfg.http.webhooks.docker)?;
+    validators::docker(authorization, &config.http.webhooks.docker)?;
 
     info!(image = %body.repository.repo_name, tag = %body.push_data.tag, "got new image update hook");
 
@@ -61,12 +63,15 @@ pub async fn docker(
 }
 
 /// Handle webhooks from GitHub repository pushes
-pub async fn github(raw_body: Bytes, headers: HeaderMap) -> Result<StatusCode, StatusCode> {
-    let cfg = config::instance();
+pub async fn github(
+    raw_body: Bytes,
+    headers: HeaderMap,
+    Extension(config): Extension<Arc<Config>>,
+) -> Result<StatusCode, StatusCode> {
     validators::github(
         &raw_body,
         headers.get("X-Hub-Signature-256"),
-        cfg.http.webhooks.github.as_bytes(),
+        config.http.webhooks.github.as_bytes(),
     )?;
 
     let body: Github = serde_json::from_slice(&raw_body).map_err(|_| StatusCode::BAD_REQUEST)?;
@@ -83,7 +88,7 @@ pub async fn github(raw_body: Bytes, headers: HeaderMap) -> Result<StatusCode, S
             before,
             reference,
             repository,
-        } => github_push_event(after, before, reference, repository).await,
+        } => github_push_event(after, before, reference, repository, config).await,
     }
 }
 
@@ -99,8 +104,8 @@ async fn github_push_event(
     before: String,
     reference: String,
     repository: Repository,
+    config: Arc<Config>,
 ) -> Result<StatusCode, StatusCode> {
-    let cfg = config::instance();
     sentry::configure_scope(|scope| {
         scope.set_tag("hook.repository", &repository.name);
         scope.set_tag("hook.after", &after);
@@ -109,7 +114,7 @@ async fn github_push_event(
     });
 
     // Check if the repository is allowed to be pulled
-    if repository.name != cfg.git.repository || !reference.ends_with(&cfg.git.branch) {
+    if repository.name != config.git.repository || !reference.ends_with(&config.git.branch) {
         return Err(StatusCode::FORBIDDEN);
     }
 

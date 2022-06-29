@@ -1,15 +1,17 @@
 use super::Job;
 use crate::{
-    config::{self, Dependency},
+    config::Dependency,
     deployer::{self, CreateOpts},
     dns, fail_notify,
     notifier::{self, Event, State},
     service::{registry::REGISTRY, AWSPart, Format, Secret, Service, ServiceName},
     vault::{self, Aws},
+    Config,
 };
 use async_trait::async_trait;
 use rand::{distributions::Alphanumeric, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use std::sync::Arc;
 use tracing::{debug, error, info, instrument, warn};
 
 #[derive(Debug)]
@@ -27,15 +29,14 @@ impl UpdateService {
 
 #[async_trait]
 impl Job for UpdateService {
-    #[instrument(skip(self), fields(name = %self.name))]
-    async fn run(&self) {
+    #[instrument(skip_all, fields(name = %self.name))]
+    async fn run(&self, config: Arc<Config>) {
         macro_rules! fail {
             ($result:expr) => {
                 fail_notify!(service_update, &self.name; $result; "an error occurred while updating service")
             };
         }
 
-        let config = config::instance();
         let service = &self.config;
 
         notifier::notify(Event::service_update(&self.name, State::InProgress)).await;

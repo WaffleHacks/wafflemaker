@@ -1,3 +1,4 @@
+use crate::Config;
 use async_trait::async_trait;
 use deadqueue::unlimited::Queue;
 use once_cell::sync::Lazy;
@@ -29,7 +30,7 @@ pub fn instance() -> Arc<JobQueue> {
 #[async_trait]
 pub trait Job: Send + Sync {
     /// Run the job
-    async fn run(&self);
+    async fn run(&self, config: Arc<Config>);
 
     /// The name of the job
     fn name<'a>(&self) -> &'a str;

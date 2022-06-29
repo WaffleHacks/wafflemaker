@@ -1,16 +1,18 @@
 use crate::{
-    config, deployer,
+    deployer,
     processor::jobs::{self, DeleteService, UpdateService},
     registry::REGISTRY,
+    Config,
 };
 use axum::{
     extract::Path,
     http::StatusCode,
     response::{IntoResponse, Response as HttpResponse},
     routing::get,
-    Json, Router,
+    Extension, Json, Router,
 };
 use serde::Serialize;
+use std::sync::Arc;
 
 /// Build the routes for services
 pub fn routes() -> Router {
@@ -19,14 +21,17 @@ pub fn routes() -> Router {
 
 /// Overcomes a limitation of axum where you cannot have a route with a bare / along with a route
 /// consuming the entire path after a / on the same router.
-async fn root_dispatch(Path(path): Path<String>) -> Result<HttpResponse, StatusCode> {
+async fn root_dispatch(
+    Path(path): Path<String>,
+    Extension(config): Extension<Arc<Config>>,
+) -> Result<HttpResponse, StatusCode> {
     // The will always be a leading /
     let service = path.strip_prefix("/").unwrap().to_owned();
 
     if service.is_empty() {
         Ok(list().await.into_response())
     } else {
-        read(service).await.map(IntoResponse::into_response)
+        read(service, config).await.map(IntoResponse::into_response)
     }
 }
 
@@ -47,7 +52,7 @@ struct Response {
 }
 
 /// Get the configuration for a service
-async fn read(service: String) -> Result<Json<Response>, StatusCode> {
+async fn read(service: String, config: Arc<Config>) -> Result<Json<Response>, StatusCode> {
     let service = service.as_str();
 
     let reg = REGISTRY.read().await;
@@ -63,10 +68,7 @@ async fn read(service: String) -> Result<Json<Response>, StatusCode> {
         Some(format!(
             "{}.{}",
             &service,
-            cfg.web
-                .domain
-                .as_ref()
-                .unwrap_or_else(|| &config::instance().deployment.domain)
+            cfg.web.domain.as_ref().unwrap_or(&config.deployment.domain)
         ))
     } else {
         None

@@ -3,9 +3,10 @@ use crate::{
     deployer, dns, fail_notify,
     notifier::{self, Event, State},
     service::{registry::REGISTRY, ServiceName},
-    vault,
+    vault, Config,
 };
 use async_trait::async_trait;
+use std::sync::Arc;
 use tracing::{debug, info, instrument};
 
 #[derive(Debug)]
@@ -22,8 +23,8 @@ impl DeleteService {
 
 #[async_trait]
 impl Job for DeleteService {
-    #[instrument(skip(self), fields(name = %self.name))]
-    async fn run(&self) {
+    #[instrument(skip_all, fields(name = %self.name))]
+    async fn run(&self, _: Arc<Config>) {
         macro_rules! fail {
             ($result:expr) => {
                 fail_notify!(service_delete, &self.name; $result; "an error occurred while deleting service")

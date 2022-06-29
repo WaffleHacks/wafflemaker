@@ -1,28 +1,20 @@
 use anyhow::Result;
-use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::{
     collections::HashMap,
     net::SocketAddr,
     num::ParseIntError,
     path::{Path, PathBuf},
+    sync::Arc,
     time::Duration,
 };
 use tokio::fs;
 
-static CONFIG: OnceCell<Config> = OnceCell::new();
-
 /// Parse the configuration from a given file
-pub async fn parse<P: AsRef<Path>>(path: P) -> Result<()> {
+pub async fn parse<P: AsRef<Path>>(path: P) -> Result<Arc<Config>> {
     let raw = fs::read(path).await?;
-    let data = toml::from_slice(&raw)?;
-    CONFIG.set(data).unwrap();
-    Ok(())
-}
-
-/// Retrieve the configuration
-pub fn instance() -> &'static Config {
-    CONFIG.get().unwrap()
+    let config = toml::from_slice(&raw)?;
+    Ok(Arc::new(config))
 }
 
 #[derive(Debug, Deserialize)]
@@ -193,15 +185,14 @@ pub struct Webhooks {
 
 #[cfg(test)]
 mod tests {
-    use super::{instance, parse, Connection, Dependency, Notifier};
+    use super::{parse, Connection, Dependency, Notifier};
     use std::time::Duration;
 
     #[tokio::test]
     async fn parse_config() {
-        parse("../wafflemaker.example.toml")
+        let config = parse("../wafflemaker.example.toml")
             .await
             .expect("failed to parse configuration");
-        let config = instance();
 
         assert_eq!("info", &config.agent.log);
         assert_eq!(false, config.agent.tokio_console);

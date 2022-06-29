@@ -1,5 +1,4 @@
 use super::*;
-use crate::config;
 use reqwest::Client;
 use serde::Serialize;
 use serde_json::json;
@@ -8,8 +7,13 @@ use tracing::instrument;
 
 /// Dispatch an event to Discord
 #[instrument(skip(client, event), fields(event = %event))]
-pub async fn dispatch(client: &Client, url: &str, event: &Event<'_, '_>) -> Result<()> {
-    let embed = Embed::from(event);
+pub async fn dispatch(
+    client: &Client,
+    url: &str,
+    default_repo: &str,
+    event: &Event<'_, '_>,
+) -> Result<()> {
+    let embed = Embed::from(event, default_repo);
     client
         .post(url)
         .json(&json!({ "content": null, "embeds": [ embed ] }))
@@ -28,8 +32,8 @@ struct Embed<'key, 'value> {
     fields: Vec<Field<'key, 'value>>,
 }
 
-impl<'f, 'n, 'v> From<&Event<'v, 'v>> for Embed<'n, 'v> {
-    fn from(event: &Event<'v, 'v>) -> Embed<'n, 'v> {
+impl<'n, 'v> Embed<'n, 'v> {
+    fn from(event: &Event<'v, 'v>, default_repo: &str) -> Embed<'n, 'v> {
         let mut fields = Vec::new();
 
         // Add any event-specific fields
@@ -38,7 +42,7 @@ impl<'f, 'n, 'v> From<&Event<'v, 'v>> for Embed<'n, 'v> {
                 let short_commit = &commit[..8];
                 let commit_url = format!(
                     "[`{short_commit}`](https://github.com/{repo}/commit/{commit})",
-                    repo = &config::instance().git.repository,
+                    repo = default_repo,
                     short_commit = short_commit,
                     commit = commit,
                 );
