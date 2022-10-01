@@ -16,10 +16,6 @@ pub enum Error {
     Serialization(#[source] ErrorSource),
     #[error("unable to request resource")]
     Http(#[source] ErrorSource),
-    #[error("resource could not be found")]
-    NotFound(#[source] ErrorSource),
-    #[error("resource already exists")]
-    Exists(#[source] ErrorSource),
     #[error("request timed out")]
     Timeout(#[source] ErrorSource),
     #[error("unable to save state")]
@@ -44,8 +40,7 @@ pub enum ErrorSource {
 impl From<BollardError> for Error {
     fn from(error: BollardError) -> Error {
         match error {
-            BollardError::NoCertPathError
-            | BollardError::CertPathError { .. }
+            BollardError::CertPathError { .. }
             | BollardError::CertMultipleKeys { .. }
             | BollardError::CertParseError { .. }
             | BollardError::APIVersionParseError { .. } => Self::Connection(error.into()),
@@ -56,12 +51,8 @@ impl From<BollardError> for Error {
                 Self::Serialization(error.into())
             }
             BollardError::DockerResponseServerError { .. }
-            | BollardError::DockerResponseBadParameterError { .. }
-            | BollardError::DockerResponseNotModifiedError { .. }
             | BollardError::HttpClientError { .. }
             | BollardError::HyperResponseError { .. } => Self::Http(error.into()),
-            BollardError::DockerResponseNotFoundError { .. } => Self::NotFound(error.into()),
-            BollardError::DockerResponseConflictError { .. } => Self::Exists(error.into()),
             BollardError::RequestTimeoutError => Self::Timeout(error.into()),
             e => Self::Unknown(e.into()),
         }

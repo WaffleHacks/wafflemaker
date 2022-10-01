@@ -1,7 +1,7 @@
 use eyre::{Result, WrapErr};
 use sentry::{ClientOptions, IntoDsn};
 use structopt::StructOpt;
-use tabled::{Alignment, Indent, Modify, Row, Style};
+use tabled::{object::Rows, Alignment, Modify, Padding, Style};
 
 mod args;
 mod commands;
@@ -31,13 +31,13 @@ fn main() -> Result<()> {
     let client = http::Client::new(cli.address, &cli.token).wrap_err("failed to build client")?;
 
     let content = cli.cmd.subcommand().execute(client)?;
-    if let Some(content) = content {
+    if let Some(mut content) = content {
         println!(
             "{}",
             content.with(Style::psql()).with(
-                Modify::new(Row(1..))
+                Modify::new(Rows::new(1..))
                     .with(Alignment::left())
-                    .with(Indent::new(1, 1, 0, 0))
+                    .with(Padding::new(1, 1, 0, 0))
             )
         );
     }

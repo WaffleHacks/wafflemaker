@@ -1,6 +1,5 @@
 use super::instance;
-use bollard::models::SystemEventsResponse;
-use bollard::{system::EventsOptions, Docker};
+use bollard::{models::EventMessage, system::EventsOptions, Docker};
 use std::collections::HashMap;
 use tokio::{select, sync::broadcast::Receiver};
 use tokio_stream::StreamExt;
@@ -105,7 +104,7 @@ struct Event {
 }
 
 impl Event {
-    fn new(source: SystemEventsResponse) -> Event {
+    fn new(source: EventMessage) -> Event {
         let actor = source.actor.unwrap();
         let action = Action::new(source.action.unwrap(), actor.attributes.unwrap());
 

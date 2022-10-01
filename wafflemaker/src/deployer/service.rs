@@ -5,7 +5,6 @@ use bollard::{
         Config as CreateContainerConfig, CreateContainerOptions, NetworkingConfig,
         RemoveContainerOptions,
     },
-    errors::Error as BollardError,
     image::CreateImageOptions,
     models::{EndpointSettings, HostConfig},
     Docker as Bollard, API_DEFAULT_VERSION,
@@ -298,12 +297,7 @@ impl Deployer {
 
     #[instrument(skip(self))]
     pub async fn start(&self, id: &str) -> Result<()> {
-        let status = self.instance.start_container::<&str>(id, None).await;
-        if let Err(e) = status {
-            if !matches!(e, BollardError::DockerResponseNotModifiedError { .. }) {
-                return Err(e.into());
-            }
-        }
+        self.instance.start_container::<&str>(id, None).await?;
         Ok(())
     }
 
@@ -318,23 +312,13 @@ impl Deployer {
 
     #[instrument(skip(self))]
     pub async fn stop(&self, id: &str) -> Result<()> {
-        let status = self.instance.stop_container(id, None).await;
-        if let Err(e) = status {
-            if !matches!(
-                e,
-                BollardError::DockerResponseNotFoundError { .. }
-                    | BollardError::DockerResponseNotModifiedError { .. }
-            ) {
-                return Err(e.into());
-            }
-        }
+        self.instance.stop_container(id, None).await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
     pub async fn delete(&self, id: &str) -> Result<()> {
-        let status = self
-            .instance
+        self.instance
             .remove_container(
                 id,
                 Some(RemoveContainerOptions {
@@ -343,12 +327,7 @@ impl Deployer {
                     force: false,
                 }),
             )
-            .await;
-        if let Err(e) = status {
-            if !matches!(e, BollardError::DockerResponseNotFoundError { .. }) {
-                return Err(e.into());
-            }
-        }
+            .await?;
 
         Ok(())
     }

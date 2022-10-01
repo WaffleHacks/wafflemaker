@@ -9,10 +9,10 @@ edition = "2021"
 
 [dependencies]
 # CLI
-color-eyre = { version = "0.5", default-features = false }
+color-eyre = { version = "0.6", default-features = false }
 eyre = "0.6"
 structopt = "0.3"
-tabled = "0.2"
+tabled = "0.9"
 
 # HTTP
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "json", "rustls-tls"] }
@@ -20,4 +20,4 @@ serde = { version = "1", features = ["derive"] }
 url = "2.2"
 
 # Logging
-sentry = { version = "0.23.0", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls", "transport"] }
+sentry = { version = "0.27.0", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls", "transport"] }

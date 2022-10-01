@@ -1,7 +1,8 @@
 use super::*;
 use crate::http::service_path;
 use std::collections::HashMap;
-use tabled::{Disable, Header};
+use tabled::object::Rows;
+use tabled::{Disable, Panel};
 
 // wafflectl get <deployments|leases|services|service {name}>
 #[derive(Debug, StructOpt)]
@@ -47,8 +48,9 @@ impl Subcommand for Get {
             Self::Services => {
                 let response: Vec<String> = client.get(&["services"])?;
                 Table::new(response)
-                    .with(Header("services"))
-                    .with(Disable::Row(1..=1))
+                    .with(Panel::header("services"))
+                    .with(Disable::row(Rows::new(1..=1)))
+                    .clone()
             }
             Self::Service { name } => {
                 let response: Service = client.get(&service_path("services", &name))?;
@@ -104,11 +106,11 @@ impl LeasesResponse {
 struct Service {
     image: String,
     automatic_updates: bool,
-    #[field(display_with = "display_option")]
+    #[tabled(display_with = "display_option")]
     domain: Option<String>,
-    #[field(display_with = "display_option")]
+    #[tabled(display_with = "display_option")]
     deployment_id: Option<String>,
-    #[header(inline("dependency."))]
+    #[tabled(inline("dependency."))]
     dependencies: ServiceDependencies,
 }
 
