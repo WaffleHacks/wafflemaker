@@ -116,3 +116,4 @@ wafflemaker.toml
 .dockerenv
 state/
 *.pem
+.env
