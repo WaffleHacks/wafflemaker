@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, PgPool};
 use time::OffsetDateTime;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Service {
+    #[serde(skip)]
     pub id: String,
 }
 
@@ -92,7 +93,7 @@ impl Service {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Eq, PartialEq, Serialize, sqlx::Type)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(rename_all = "lowercase", type_name = "containers_status")]
 pub enum Status {
@@ -105,7 +106,7 @@ pub enum Status {
     Stopped,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Container {
     pub service: String,
     pub id: String,
@@ -145,7 +146,7 @@ impl Container {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Lease {
     pub service: String,
     pub id: String,

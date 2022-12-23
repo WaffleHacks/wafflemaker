@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query_as, PgPool};
 use std::path::Path;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Deployment {
     pub commit: String,
 }
@@ -64,7 +64,7 @@ impl Deployment {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Eq, PartialEq, Serialize, sqlx::Type)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(rename_all = "lowercase", type_name = "change_action")]
 pub enum Action {
@@ -72,7 +72,7 @@ pub enum Action {
     Deleted,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Change {
     pub commit: String,
     pub path: String,
