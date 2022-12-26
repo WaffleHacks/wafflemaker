@@ -3386,13 +3386,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "wafflemaker-service"
+version = "0.1.0"
+dependencies = [
+ "globset",
+ "serde",
+ "serde_with 2.1.0",
+ "time",
+ "tokio",
+ "toml",
+]
+
+[[package]]
 name = "wafflemaker-storage"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "serde",
+ "serde_json",
  "sqlx",
  "time",
+ "wafflemaker-service",
 ]
 
 [[package]]

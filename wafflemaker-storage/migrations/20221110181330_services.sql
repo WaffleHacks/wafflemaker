@@ -1,6 +1,8 @@
 CREATE TABLE services (
     id TEXT PRIMARY KEY,
-    spec JSON NOT NULL
+    spec JSONB NOT NULL,
+    domain TEXT DEFAULT NULL,
+    path TEXT NOT NULL DEFAULT '/'
 );
 
 CREATE TYPE containers_status AS ENUM ('configuring', 'pulling', 'creating', 'starting', 'healthy', 'unhealthy', 'stopped');
@@ -19,4 +21,4 @@ CREATE TABLE leases (
     PRIMARY KEY (service, id)
 );
 
-CREATE INDEX leases_id_idx ON leases (id);
+CREATE INDEX ON leases (id);

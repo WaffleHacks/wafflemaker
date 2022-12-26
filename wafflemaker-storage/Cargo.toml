@@ -8,5 +8,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.57"
 serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1.0.91"
 sqlx = { version = "0.6.2", features = ["json", "macros", "migrate", "offline", "postgres", "runtime-tokio-rustls", "time"] }
 time = { version = "0.3.17", features = ["serde"] }
+wafflemaker-service = { version = "0.1.0", path = "../wafflemaker-service" }

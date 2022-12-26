@@ -1,0 +1,14 @@
+[package]
+name = "wafflemaker-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+globset = "0.4.9"
+serde = { version = "1.0.151", features = ["derive"] }
+serde_with = "2.1.0"
+time = { version = "0.3.17", features = ["serde"] }
+
+[dev-dependencies]
+tokio = { version = "1.23.0", features = ["rt-multi-thread", "macros", "fs"] }
+toml = "0.5.10"

@@ -1,2 +1,2 @@
 [workspace]
-members = ["wafflectl", "wafflemaker", "wafflemaker-storage"]
+members = ["wafflectl", "wafflemaker", "wafflemaker-service", "wafflemaker-storage"]

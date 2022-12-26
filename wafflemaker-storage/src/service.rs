@@ -1,20 +1,43 @@
 use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, PgPool};
 use time::OffsetDateTime;
+use wafflemaker_service::Service as ServiceSpec;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Service {
-    #[serde(skip)]
     pub id: String,
+    pub spec: ServiceSpec,
+    pub domain: Option<String>,
+    pub path: String,
+}
+
+macro_rules! service_from_record {
+    () => {
+        |r| {
+            use serde::de::IntoDeserializer;
+
+            // TODO: handle error properly
+            let spec = ServiceSpec::deserialize(r.spec.into_deserializer()).unwrap();
+
+            Ok(Service {
+                id: r.id,
+                spec,
+                domain: r.domain,
+                path: r.path,
+            })
+        }
+    };
 }
 
 impl Service {
     /// Get all the services
     pub async fn all(pool: &PgPool) -> sqlx::Result<Vec<Service>> {
-        // TODO: include all service fields
-        query_as!(Service, "SELECT id FROM services")
+        query!("SELECT * FROM services")
             .fetch_all(pool)
-            .await
+            .await?
+            .into_iter()
+            .map(service_from_record!())
+            .collect()
     }
 
     /// Find a service by its id
@@ -22,26 +45,46 @@ impl Service {
     where
         S: AsRef<str>,
     {
-        // TODO: include all service fields
-        query_as!(
-            Service,
-            "SELECT id FROM services WHERE id = $1",
-            id.as_ref()
-        )
-        .fetch_optional(pool)
-        .await
+        query!("SELECT * FROM services WHERE id = $1", id.as_ref())
+            .fetch_optional(pool)
+            .await?
+            .map(service_from_record!())
+            .transpose()
     }
 
-    /// Create a new service
-    pub async fn create(id: String, pool: &PgPool) -> sqlx::Result<Service> {
-        // TODO: include all service fields
-        query_as!(
-            Service,
-            "INSERT INTO services (id) VALUES ($1) RETURNING id",
-            id
+    /// Create a new service from a specification
+    pub async fn create_from_spec(
+        id: String,
+        spec: ServiceSpec,
+        default_domain: String,
+        pool: &PgPool,
+    ) -> sqlx::Result<Service> {
+        let domain = match spec.web.enabled {
+            true => Some(spec.web.domain.as_ref().unwrap_or(&default_domain)),
+            false => None,
+        };
+        // TODO: pull from spec
+        let path = "/";
+
+        // TODO: properly handle error
+        let serialized = serde_json::to_value(&spec).unwrap();
+
+        let record = query!(
+            "INSERT INTO services (id, spec, domain, path) VALUES ($1, $2, $3, $4) RETURNING *",
+            id,
+            serialized,
+            domain,
+            path,
         )
         .fetch_one(pool)
-        .await
+        .await?;
+
+        Ok(Service {
+            id: record.id,
+            spec,
+            domain: record.domain,
+            path: record.path,
+        })
     }
 
     /// Add a lease to the service
@@ -90,6 +133,11 @@ impl Service {
             .await?;
 
         Ok(())
+    }
+
+    /// Returns whether the service can be accessed from the internet
+    pub fn is_publicly_accessible(&self) -> bool {
+        self.domain.is_some()
     }
 }
 
